@@ -1,47 +1,72 @@
 import React from "react";
-import logoCodelco from "src/assets/img/codelco/logo.png";
+import bannerLogin from "src/assets/img/codelco/banner_login.png";
 import logoDavte from "src/assets/img/codelco/davte.png";
-import "./LoginBase.css";
 
 const LoginBase = ({ children }) => {
   return (
-    <div className="login-page bg-light d-flex flex-column min-vh-100">
-      {/* Header con título y logo */}
+    <div className="container-fluid bg-body-tertiary min-vh-100 d-flex align-items-center justify-content-center position-relative">
+      {/* Fondo decorativo */}
       <div
-        className="login-header bg-primary d-flex justify-content-between align-items-center px-4"
-        style={{ height: "100px" }}
+        className="bg-holder position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          backgroundImage:
+            "url('/assets/img/logos/codelco-completo-blanco.png')",
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center",
+          zIndex: 0,
+          opacity: 0.03,
+        }}
+      />
+
+      {/* Card principal */}
+      <div
+        className="card border-0 shadow-lg position-relative w-100"
+        style={{ zIndex: 1, maxWidth: 1000 }}
       >
-        <div className="text-white fw-bold">
-          <div style={{ fontSize: "18px", lineHeight: "1.2" }}>
-            JUSTIFICACIONES PLAN DE
+        <div className="row g-0">
+          {/* Columna izquierda: título institucional */}
+          <div className="col-md-6 bg-light d-none d-md-flex flex-column justify-content-center align-items-center p-4 rounded-start  bg-dark">
+            <div className="text-center">
+              <img
+                src={bannerLogin}
+                alt="CODELCO El Teniente"
+                className="img-fluid"
+                style={{ maxHeight: 500 }}
+              />
+            </div>
           </div>
-          <div style={{ fontSize: "30px", lineHeight: "1" }}>
-            <span className="fw-bolder">LIDERAZGO</span>
+
+          {/* Columna derecha: contenido dinámico */}
+          <div className="col-md-6 d-flex flex-column justify-content-center align-items-center p-5">
+            <div style={{ width: "100%", maxWidth: 360 }}>
+              <div className="text-center">
+                <h6
+                  className="text-uppercase text-muted mb-1"
+                  style={{ fontSize: 18, letterSpacing: "1px" }}
+                >
+                  Justificaciones Plan de
+                </h6>
+                <h2
+                  className="text-dark fw-bold text-uppercase mb-4"
+                  style={{ fontSize: 40 }}
+                >
+                  Liderazgo
+                </h2>
+              </div>
+
+              {children}
+              <div className="text-center mt-5">
+                <img
+                  src={logoDavte}
+                  alt="DATE"
+                  style={{ height: 64 }}
+                  className="mt-1"
+                />
+              </div>
+            </div>
           </div>
         </div>
-        <img src={logoCodelco} alt="CODELCO El Teniente" height="60" />
-      </div>
-
-      {/* Contenido central */}
-      <div className="flex-fill d-flex justify-content-center align-items-center">
-        <div
-          className="login-box bg-white p-4 rounded shadow"
-          style={{ minWidth: 350, maxWidth: 420 }}
-        >
-          <h3 className="text-center mb-4 fw-bold">Iniciar Sesión</h3>
-          {children}
-        </div>
-      </div>
-
-      {/* Footer con logo de DATE */}
-      <div className="text-center pb-3">
-        <small>Desarrollado por</small>
-        <br />
-        <img
-          src={logoDavte}
-          alt="Desarrollado por DATE"
-          style={{ height: 28, marginTop: 4 }}
-        />
       </div>
     </div>
   );

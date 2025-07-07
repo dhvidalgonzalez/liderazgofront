@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import LoginBase from "src/components/base/login";
 
 const Login = () => {
@@ -12,6 +13,8 @@ const Login = () => {
 
   return (
     <LoginBase>
+      <h3 className="fw-bold text-primary">Iniciar Sesión</h3>
+      <p className="text-muted">Accede al sistema</p>
       <form onSubmit={handleLogin}>
         <div className="mb-3">
           <label htmlFor="rut" className="form-label">
@@ -48,9 +51,9 @@ const Login = () => {
         </button>
 
         <div className="text-center mt-3">
-          <a href="#" className="small text-decoration-none">
+          <Link to={"/changePassword"} className="text-decoration-none">
             ¿Olvidó su contraseña?
-          </a>
+          </Link>
         </div>
       </form>
     </LoginBase>

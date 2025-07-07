@@ -8,6 +8,7 @@ const mockUser = {
   lastName: "Vidal",
   email: "david.vidal@example.com",
   rut: "12.345.678-9",
+  id: "de7b354d-c6d6-45fe-938a-f437682c2c83",
 };
 
 // 🎯 Contexto y proveedor

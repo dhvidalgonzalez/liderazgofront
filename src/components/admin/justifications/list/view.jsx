@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Detail from "../detail";
 import Update from "../update";
+import { statusMap, typeMap } from "src/constants";
 
 const getEstadoClass = (estado) => {
   switch (estado) {
@@ -15,50 +16,39 @@ const getEstadoClass = (estado) => {
   }
 };
 
-const typeMap = {
-  VACATION: "Vacaciones",
-  COMISION: "Comisión",
-  ACTIVIDAD: "Actividad",
-  MEDICAL: "Médica",
-  LEGAL: "Legal",
-  OTHER: "Otra",
-};
-
-const statusMap = {
-  PENDING: "Pendiente",
-  APPROVED: "Aprobada",
-  REJECTED: "Rechazada",
-};
-
-const View = ({ justifications }) => {
+// En lugar de: props.refetch
+const View = ({ justifications, filters, setFilters, applyFilters }) => {
   const [selected, setSelected] = useState(null);
   const [updateTarget, setUpdateTarget] = useState(null);
-  const [search, setSearch] = useState("");
-  const [revisionFilter, setRevisionFilter] = useState("");
-  const [startDateFrom, setStartDateFrom] = useState("");
-  const [startDateTo, setStartDateTo] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  const filtered = justifications.filter((j) => {
-    const name = j.employeeName || "";
-    const revision = j.reviewerId ? "manual" : "automatica";
+  useEffect(() => {
+    if (!filters.createdAtStart || !filters.createdAtEnd) {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 1);
 
-    const passesSearch = name.toLowerCase().includes(search.toLowerCase());
-    const passesRevision = revisionFilter === "" || revision === revisionFilter;
+      setFilters((prev) => ({
+        ...prev,
+        createdAtStart: startDate.toISOString().split("T")[0],
+        createdAtEnd: endDate.toISOString().split("T")[0],
+      }));
+    }
+  }, [filters, setFilters]);
 
-    const date = j.startDate ? new Date(j.startDate) : null;
-    const from = startDateFrom ? new Date(startDateFrom) : null;
-    const to = startDateTo ? new Date(startDateTo) : null;
+  const handleInputChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
 
-    const passesDate =
-      (!from || (date && date >= from)) && (!to || (date && date <= to));
+  const handleSearchClick = () => {
+    setPage(1);
+    refetch();
+  };
 
-    return passesSearch && passesRevision && passesDate;
-  });
-
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const currentPageData = filtered.slice(
+  const totalPages = Math.ceil(justifications.length / pageSize);
+  const currentPageData = justifications.slice(
     (page - 1) * pageSize,
     page * pageSize
   );
@@ -94,7 +84,7 @@ const View = ({ justifications }) => {
       <div className="row justify-content-center">
         <div className="col-12 col-lg-10 col-xl-10">
           <div className="card shadow-sm">
-            <div className="card-header bg-light d-flex justify-content-between align-items-center">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Justificaciones</h5>
             </div>
 
@@ -108,48 +98,52 @@ const View = ({ justifications }) => {
                     type="text"
                     placeholder="Buscar por nombre"
                     className="form-control"
-                    value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
+                    value={filters.search}
+                    onChange={(e) =>
+                      handleInputChange("search", e.target.value)
+                    }
                   />
                 </div>
                 <div className="col-md-3">
                   <select
                     className="form-select"
-                    value={revisionFilter}
-                    onChange={(e) => {
-                      setRevisionFilter(e.target.value);
-                      setPage(1);
-                    }}
+                    value={filters.revisionType}
+                    onChange={(e) =>
+                      handleInputChange("revisionType", e.target.value)
+                    }
                   >
                     <option value="">Todas las revisiones</option>
                     <option value="manual">Revisión manual</option>
                     <option value="automatica">Revisión automática</option>
                   </select>
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <input
                     type="date"
                     className="form-control"
-                    value={startDateFrom}
-                    onChange={(e) => {
-                      setStartDateFrom(e.target.value);
-                      setPage(1);
-                    }}
+                    value={filters.createdAtStart}
+                    onChange={(e) =>
+                      handleInputChange("createdAtStart", e.target.value)
+                    }
                   />
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <input
                     type="date"
                     className="form-control"
-                    value={startDateTo}
-                    onChange={(e) => {
-                      setStartDateTo(e.target.value);
-                      setPage(1);
-                    }}
+                    value={filters.createdAtEnd}
+                    onChange={(e) =>
+                      handleInputChange("createdAtEnd", e.target.value)
+                    }
                   />
+                </div>
+                <div className="col-md-2 d-flex align-items-end">
+                  <button
+                    className="btn btn-primary w-100"
+                    onClick={applyFilters}
+                  >
+                    Buscar
+                  </button>
                 </div>
               </div>
 
@@ -181,6 +175,12 @@ const View = ({ justifications }) => {
                             onClick={() => setSelected(j)}
                           >
                             <i className="bi bi-eye"></i> Ver
+                          </button>
+                          <button
+                            className="btn btn-outline-success btn-sm"
+                            onClick={() => setUpdateTarget(j)}
+                          >
+                            <i className="bi bi-pencil-square"></i> Actualizar
                           </button>
                         </td>
                       </tr>

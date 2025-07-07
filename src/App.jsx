@@ -7,6 +7,8 @@ import Home from "./components/user/home";
 import Login from "./components/user/login";
 
 import { UserProvider } from "src/components/context/UserContext"; // 👈 importar tu contexto
+import ChangePassword from "./components/user/changePassword";
+import AdminJustifications from "./components/admin/justifications";
 
 const router = createBrowserRouter([
   {
@@ -17,6 +19,11 @@ const router = createBrowserRouter([
     path: "/login",
     element: <Login />,
   },
+
+  {
+    path: "/changePassword",
+    element: <ChangePassword />,
+  },
   {
     path: "/createJustification",
     element: <CreateJustification />,
@@ -24,6 +31,11 @@ const router = createBrowserRouter([
   {
     path: "/myJustifications",
     element: <MyJustifications />,
+  },
+
+  {
+    path: "/adminJustifications",
+    element: <AdminJustifications />,
   },
 ]);
 

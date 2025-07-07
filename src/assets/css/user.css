@@ -1,2 +1,43 @@
-/* prettier-ignore */
-/*# sourceMappingURL=user.css.map */
+/* ==== Colores personalizados ==== */
+:root {
+  --color-primary: #4DA496;
+  --color-secondary: #6C757D;
+  --color-success: #198754;
+  --color-danger: #DC3545;
+  --color-warning: #FFC107;
+  --color-info: #0DCAF0;
+  --color-light: #F8F9FA;
+  --color-dark: #212529;
+}
+
+/* ==== Sobrescritura de clases Bootstrap .bg-* ==== */
+.bg-primary {
+  background-color: var(--color-primary) !important;
+}
+.bg-secondary {
+  background-color: var(--color-secondary) !important;
+}
+.bg-success {
+  background-color: var(--color-success) !important;
+}
+.bg-danger {
+  background-color: var(--color-danger) !important;
+}
+.bg-warning {
+  background-color: var(--color-warning) !important;
+}
+.bg-info {
+  background-color: var(--color-info) !important;
+}
+.bg-light {
+  background-color: var(--color-light) !important;
+}
+.bg-dark {
+  background-color: var(--color-dark) !important;
+}
+.bg-white {
+  background-color: #fff !important;
+}
+.bg-transparent {
+  background-color: transparent !important;
+}

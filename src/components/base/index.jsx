@@ -6,8 +6,6 @@ import Footer from "../footer";
 const Base = ({ content }) => {
   return (
     <>
-      <Menu></Menu>
-
       <Header></Header>
       <div class="content">
         {content}
