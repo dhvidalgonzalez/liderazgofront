@@ -1,14 +1,16 @@
 // src/utils/apiClient.js
 import axios from "axios";
 
-const BASE_URL = "http://localhost:3000/api"; // compatible con Vite o fallback
+const BASE_URL = "http://127.0.0.1:3000/api"; // compatible con Vite o fallback
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true, // 🔑 Esto es CLAVE para enviar cookies al backend
 });
+
 
 const apiClient = async ({
   method = "GET",

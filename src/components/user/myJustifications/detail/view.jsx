@@ -32,7 +32,7 @@ const View = ({ justification, onClose }) => {
           </div>
           <div className="modal-body">
             <p>
-              <strong>Colaborador:</strong> {justification.employeeName || "—"}
+              <strong>Colaborador:</strong> {justification.employeeNombre || "—"}
             </p>
             <p>
               <strong>RUT:</strong> {justification.employeeRut || "—"}

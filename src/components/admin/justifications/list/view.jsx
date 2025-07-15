@@ -161,7 +161,7 @@ const View = ({ justifications, filters, setFilters, applyFilters }) => {
                   <tbody>
                     {currentPageData.map((j) => (
                       <tr key={j.id}>
-                        <td>{j.employeeName || "—"}</td>
+                        <td>{j.employeeNombre || "—"}</td>
                         <td>{j.employeeRut || "—"}</td>
                         <td>{typeMap[j.type] || j.type}</td>
                         <td>

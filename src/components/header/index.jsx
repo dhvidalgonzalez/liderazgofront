@@ -1,10 +1,25 @@
 import React from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import plataformaNavbar from "src/assets/img/codelco/plataforma_navbar.png";
 import logosNavbar from "src/assets/img/codelco/logos_navbar.png";
 import logoUser from "src/assets/img/codelco/user.png";
+import logoutService from "src/services/login/logout";
 
 const Header = () => {
+
+    const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logoutService();
+      // Redirigir al login
+      navigate("/login");
+    } catch (error) {
+      console.error("❌ Error al cerrar sesión:", error);
+    }
+  };
+
+
   return (
     <nav
       className="navbar navbar-top fixed-top navbar-expand-lg bg-dark"
@@ -216,14 +231,15 @@ const Header = () => {
                 </ul>
                 <hr />
                 <div className="px-3">
-                  <a
+                  <button
                     className="btn btn-phoenix-secondary d-flex flex-center w-100"
-                    href="#!"
+                    onClick={handleLogout}
                   >
                     <span className="me-2" data-feather="log-out" />
-                    Sign out
-                  </a>
+                    Cerrar sesión
+                  </button>
                 </div>
+
                 <div className="my-2 text-center fw-bold fs-10 text-body-quaternary">
                   <a className="text-body-quaternary me-1" href="#!">
                     Privacy policy

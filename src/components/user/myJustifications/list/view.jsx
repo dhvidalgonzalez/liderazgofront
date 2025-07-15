@@ -41,7 +41,7 @@ const View = ({ justifications }) => {
   const pageSize = 10;
 
   const filtered = justifications.filter((j) => {
-    const name = j.employeeName || "";
+    const name = j.employeeNombre || "";
     const revision = j.reviewerId ? "manual" : "automatica";
 
     const passesSearch = name.toLowerCase().includes(search.toLowerCase());
@@ -167,7 +167,7 @@ const View = ({ justifications }) => {
                   <tbody>
                     {currentPageData.map((j) => (
                       <tr key={j.id}>
-                        <td>{j.employeeName || "—"}</td>
+                        <td>{j.employeeNombre || "—"}</td>
                         <td>{j.employeeRut || "—"}</td>
                         <td>{typeMap[j.type] || j.type}</td>
                         <td>

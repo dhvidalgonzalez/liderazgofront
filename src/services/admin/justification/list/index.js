@@ -6,9 +6,9 @@ import apiClient from "src/services/apiClient";
  */
 const listJustificationsService = async (filters = {}) => {
   return apiClient({
-    method: "GET",
-    url: "/admin/justifications",
-    params: filters,
+    method: "POST",
+    url: "/admin/justification",
+    data: filters, // ✅ los filtros van en el body ahora
   });
 };
 
