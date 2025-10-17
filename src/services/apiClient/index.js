@@ -1,7 +1,7 @@
 // src/utils/apiClient.js
 import axios from "axios";
 
-const BASE_URL = "http://localhost:3000/api";// compatible con Vite o fallback
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,

@@ -1,6 +1,7 @@
 import apiClient from "src/services/apiClient";
 
 const listTrabajadoresService = async (data = {}) => {
+
   return apiClient({
     method: "POST",
     url: "/trabajador/trabajadores",
