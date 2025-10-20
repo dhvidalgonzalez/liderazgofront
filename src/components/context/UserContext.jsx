@@ -1,34 +1,58 @@
-// src/components/context/UserProviderStatic.jsx
+import React, { createContext, useContext, useEffect, useState } from "react";
+import meService from "src/services/login/meService";
+import logoutService from "src/services/login/logout";
 
-import React, { createContext, useContext } from "react";
-
-// 🧪 Usuario de prueba
-const mockUser = {
-  name: "David",
-  lastName: "Vidal",
-  email: "david.vidal@example.com",
-  rut: "12.345.678-9",
-  id: "de7b354d-c6d6-45fe-938a-f437682c2c83",
-};
-
-// 🎯 Contexto y proveedor
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSession = async () => {
+    try {
+      const res = await meService();
+      if (res.loggedIn) setUser(res.user);
+      else setUser(null);
+    } catch (error) {
+      // 401 o backend caído => no hay sesión
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSession();
+  }, []);
+
+  const logout = async () => {
+    try {
+      await logoutService();
+      setUser(null);
+    } catch (err) {
+      console.error("❌ Error al cerrar sesión:", err?.message || err);
+    }
+  };
+
   return (
-    <UserContext.Provider value={{ user: mockUser }}>
-      {children}
+    <UserContext.Provider
+      value={{
+        user,
+        setUser,
+        loading,
+        fetchSession,
+        logout,
+      }}
+    >
+      {!loading ? children : <div>Cargando sesión...</div>}
     </UserContext.Provider>
   );
 };
 
-// Hook personalizado
 export const useUser = () => {
-  const context = useContext(UserContext);
-  if (!context) {
-    throw new Error("useUser must be used within a UserProvider");
-  }
-  return context;
+  const ctx = useContext(UserContext);
+  if (!ctx) throw new Error("useUser debe usarse dentro de un UserProvider");
+  return ctx;
 };
 
 export { UserContext };

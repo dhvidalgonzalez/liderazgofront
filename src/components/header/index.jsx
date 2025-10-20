@@ -3,43 +3,27 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import plataformaNavbar from "src/assets/img/codelco/plataforma_navbar.png";
 import logosNavbar from "src/assets/img/codelco/logos_navbar.png";
 import logoUser from "src/assets/img/codelco/user.png";
-import logoutService from "src/services/login/logout";
+import { useUser } from "../context/UserContext";
+
 
 const Header = () => {
-
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { user, logout } = useUser();
+  console.log("🚀 ~ Header ~ user:", user)
 
   const handleLogout = async () => {
     try {
-      await logoutService();
-      // Redirigir al login
+      await logout();
       navigate("/login");
     } catch (error) {
       console.error("❌ Error al cerrar sesión:", error);
     }
   };
 
-
   return (
-    <nav
-      className="navbar navbar-top fixed-top navbar-expand-lg bg-dark"
-      id="navbarTop"
-    >
+    <nav className="navbar navbar-top fixed-top navbar-expand-lg bg-dark" id="navbarTop">
       <div className="navbar-logo">
-        <button
-          className="btn navbar-toggler navbar-toggler-humburger-icon hover-bg-transparent"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarTopCollapse"
-          aria-controls="navbarTopCollapse"
-          aria-expanded="false"
-          aria-label="Toggle Navigation"
-        >
-          <span className="navbar-toggle-icon">
-            <span className="toggle-line" />
-          </span>
-        </button>
-        <Link className="navbar-brand me-1 me-sm-3" to={"/home"}>
+        <Link className="navbar-brand me-1 me-sm-3" to="/home">
           <div className="d-flex align-items-center">
             <img src={plataformaNavbar} alt="phoenix" width="180" />
           </div>
@@ -50,17 +34,12 @@ const Header = () => {
         className="collapse navbar-collapse navbar-top-collapse order-1 order-lg-0 justify-content-center"
         id="navbarTopCollapse"
       >
-        <ul
-          className="navbar-nav navbar-nav-top"
-          data-dropdown-on-hover="data-dropdown-on-hover"
-        >
+        <ul className="navbar-nav navbar-nav-top">
           <li className="nav-item">
             <NavLink
               to="/home"
               className={({ isActive }) =>
-                `nav-link text-white lh-1 ${
-                  isActive ? "fw-bold bg-primary" : ""
-                }`
+                `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
               }
             >
               Inicio
@@ -70,9 +49,7 @@ const Header = () => {
             <NavLink
               to="/createJustification"
               className={({ isActive }) =>
-                `nav-link text-white lh-1 ${
-                  isActive ? "fw-bold bg-primary" : ""
-                }`
+                `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
               }
             >
               Crear Justificación
@@ -82,9 +59,7 @@ const Header = () => {
             <NavLink
               to="/myJustifications"
               className={({ isActive }) =>
-                `nav-link text-white lh-1 ${
-                  isActive ? "fw-bold bg-primary " : ""
-                }`
+                `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
               }
             >
               Mis Justificaciones
@@ -94,9 +69,7 @@ const Header = () => {
             <NavLink
               to="/adminJustifications"
               className={({ isActive }) =>
-                `nav-link text-white lh-1 ${
-                  isActive ? "fw-bold bg-primary " : ""
-                }`
+                `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
               }
             >
               Administrar Justificaciones
@@ -106,20 +79,6 @@ const Header = () => {
       </div>
 
       <ul className="navbar-nav navbar-nav-icons flex-row">
-        <li className="nav-item">
-          <a
-            className="nav-link"
-            href="#"
-            data-bs-toggle="modal"
-            data-bs-target="#searchBoxModal"
-          >
-            <span
-              data-feather="search"
-              style={{ height: 19, width: 19, marginBottom: 2 }}
-            />
-          </a>
-        </li>
-
         <li className="nav-item dropdown mx-4">
           <a
             className="nav-link lh-1 pe-0"
@@ -127,7 +86,6 @@ const Header = () => {
             href="#!"
             role="button"
             data-bs-toggle="dropdown"
-            data-bs-auto-close="outside"
             aria-haspopup="true"
             aria-expanded="false"
           >
@@ -135,123 +93,32 @@ const Header = () => {
               <img className="rounded-circle" src={logoUser} alt="User" />
             </div>
           </a>
+
           <div
             className="dropdown-menu dropdown-menu-end navbar-dropdown-caret py-0 dropdown-profile shadow border"
             aria-labelledby="navbarDropdownUser"
           >
             <div className="card position-relative border-0">
-              <div className="card-body p-0">
-                <div className="text-center pt-4 pb-3">
-                  <div className="avatar avatar-xl">
-                    <img className="rounded-circle" src={logoUser} alt="User" />
-                  </div>
-                  <h6 className="mt-2 text-body-emphasis">Jerry Seinfield</h6>
-                </div>
-                <div className="mb-3 mx-3">
-                  <input
-                    className="form-control form-control-sm"
-                    id="statusUpdateInput"
-                    type="text"
-                    placeholder="Update your status"
-                  />
-                </div>
+              <div className="card-body p-3">
+                {user ? (
+                  <>
+                    <p className="fw-bold mb-0">{user.nombre}</p>
+                    <p className="small text-muted mb-0">{user.rut}</p>
+                  </>
+                ) : (
+                  <p className="text-muted mb-0">Usuario no identificado</p>
+                )}
               </div>
-              <div
-                className="overflow-auto scrollbar"
-                style={{ height: "10rem" }}
-              >
-                <ul className="nav d-flex flex-column mb-2 pb-1">
-                  <li className="nav-item">
-                    <a className="nav-link px-3 d-block" href="#!">
-                      <span
-                        className="me-2 text-body align-bottom"
-                        data-feather="user"
-                      />
-                      <span>Profile</span>
-                    </a>
-                  </li>
-                  <li className="nav-item">
-                    <a className="nav-link px-3 d-block" href="#!">
-                      <span
-                        className="me-2 text-body align-bottom"
-                        data-feather="pie-chart"
-                      />
-                      Dashboard
-                    </a>
-                  </li>
-                  <li className="nav-item">
-                    <a className="nav-link px-3 d-block" href="#!">
-                      <span
-                        className="me-2 text-body align-bottom"
-                        data-feather="lock"
-                      />
-                      Posts & Activity
-                    </a>
-                  </li>
-                  <li className="nav-item">
-                    <a className="nav-link px-3 d-block" href="#!">
-                      <span
-                        className="me-2 text-body align-bottom"
-                        data-feather="settings"
-                      />
-                      Settings & Privacy
-                    </a>
-                  </li>
-                  <li className="nav-item">
-                    <a className="nav-link px-3 d-block" href="#!">
-                      <span
-                        className="me-2 text-body align-bottom"
-                        data-feather="help-circle"
-                      />
-                      Help Center
-                    </a>
-                  </li>
-                  <li className="nav-item">
-                    <a className="nav-link px-3 d-block" href="#!">
-                      <span
-                        className="me-2 text-body align-bottom"
-                        data-feather="globe"
-                      />
-                      Language
-                    </a>
-                  </li>
-                </ul>
-              </div>
+
               <div className="card-footer p-0 border-top border-translucent">
-                <ul className="nav d-flex flex-column my-3">
-                  <li className="nav-item">
-                    <a className="nav-link px-3 d-block" href="#!">
-                      <span
-                        className="me-2 text-body align-bottom"
-                        data-feather="user-plus"
-                      />
-                      Add another account
-                    </a>
-                  </li>
-                </ul>
-                <hr />
-                <div className="px-3">
+                <div className="px-3 py-2">
                   <button
-                    className="btn btn-phoenix-secondary d-flex flex-center w-100"
+                    className="btn btn-danger d-flex flex-center w-100"
                     onClick={handleLogout}
                   >
                     <span className="me-2" data-feather="log-out" />
                     Cerrar sesión
                   </button>
-                </div>
-
-                <div className="my-2 text-center fw-bold fs-10 text-body-quaternary">
-                  <a className="text-body-quaternary me-1" href="#!">
-                    Privacy policy
-                  </a>
-                  •
-                  <a className="text-body-quaternary mx-1" href="#!">
-                    Terms
-                  </a>
-                  •
-                  <a className="text-body-quaternary ms-1" href="#!">
-                    Cookies
-                  </a>
                 </div>
               </div>
             </div>
@@ -259,9 +126,7 @@ const Header = () => {
         </li>
 
         <li className="nav-item">
-          <div className="">
-            <img className="" src={logosNavbar} width="100" alt="Logos" />
-          </div>
+          <img src={logosNavbar} width="100" alt="Logos" />
         </li>
       </ul>
     </nav>
