@@ -10,6 +10,7 @@ import AdminJustifications from "./components/admin/justifications";
 
 import { UserProvider } from "src/components/context/UserContext";
 import ProtectedRoute from "src/components/auth/ProtectedRoute";
+import EmployeeProfile from "./components/user/employeeProfile";
 
 const basename = import.meta.env.VITE_BASENAME || "/";
 
@@ -49,6 +50,15 @@ const router = createBrowserRouter(
       element: (
         <ProtectedRoute>
           <AdminJustifications />
+        </ProtectedRoute>
+      ),
+    },
+
+      {
+      path: "/employeeProfiles",
+      element: (
+        <ProtectedRoute>
+          <EmployeeProfile />
         </ProtectedRoute>
       ),
     },

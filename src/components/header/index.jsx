@@ -5,46 +5,52 @@ import logosNavbar from "src/assets/img/codelco/logos_navbar.png";
 import logoUser from "src/assets/img/codelco/user.png";
 import { useUser } from "../context/UserContext";
 
-
 const Header = () => {
   const navigate = useNavigate();
-  const { user, logout } = useUser();
-  console.log("🚀 ~ Header ~ user:", user)
+  const { user, logout, isAdmin } = useUser();
 
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/login");
+      navigate("/liderazgo/login");
     } catch (error) {
       console.error("❌ Error al cerrar sesión:", error);
     }
   };
 
+  if (!user) return null;
+
   return (
     <nav className="navbar navbar-top fixed-top navbar-expand-lg bg-dark" id="navbarTop">
+      {/* Logo */}
       <div className="navbar-logo">
         <Link className="navbar-brand me-1 me-sm-3" to="/home">
           <div className="d-flex align-items-center">
-            <img src={plataformaNavbar} alt="phoenix" width="180" />
+            <img src={plataformaNavbar} alt="plataforma" width="180" />
           </div>
         </Link>
       </div>
 
+      {/* Menú central */}
       <div
         className="collapse navbar-collapse navbar-top-collapse order-1 order-lg-0 justify-content-center"
         id="navbarTopCollapse"
       >
         <ul className="navbar-nav navbar-nav-top">
-          <li className="nav-item">
-            <NavLink
-              to="/home"
-              className={({ isActive }) =>
-                `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
-              }
-            >
-              Inicio
-            </NavLink>
-          </li>
+          {isAdmin && (
+            <li className="nav-item">
+              <NavLink
+                to="/home"
+                className={({ isActive }) =>
+                  `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
+                }
+              >
+                Inicio
+              </NavLink>
+            </li>
+          )}
+
+          {/* Siempre visibles */}
           <li className="nav-item">
             <NavLink
               to="/createJustification"
@@ -55,6 +61,7 @@ const Header = () => {
               Crear Justificación
             </NavLink>
           </li>
+
           <li className="nav-item">
             <NavLink
               to="/myJustifications"
@@ -65,19 +72,38 @@ const Header = () => {
               Mis Justificaciones
             </NavLink>
           </li>
-          <li className="nav-item">
-            <NavLink
-              to="/adminJustifications"
-              className={({ isActive }) =>
-                `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
-              }
-            >
-              Administrar Justificaciones
-            </NavLink>
-          </li>
+
+          {/* Solo visible si es administrador */}
+          {isAdmin && (
+            <li className="nav-item">
+              <NavLink
+                to="/adminJustifications"
+                className={({ isActive }) =>
+                  `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
+                }
+              >
+                Administrar Justificaciones
+              </NavLink>
+            </li>
+          )}
+
+            {/* Solo visible si es administrador */}
+          {isAdmin && (
+            <li className="nav-item">
+              <NavLink
+                to="/employeeProfiles"
+                className={({ isActive }) =>
+                  `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
+                }
+              >
+                 Perfiles
+              </NavLink>
+            </li>
+          )}
         </ul>
       </div>
 
+      {/* Menú usuario */}
       <ul className="navbar-nav navbar-nav-icons flex-row">
         <li className="nav-item dropdown mx-4">
           <a
@@ -98,28 +124,23 @@ const Header = () => {
             className="dropdown-menu dropdown-menu-end navbar-dropdown-caret py-0 dropdown-profile shadow border"
             aria-labelledby="navbarDropdownUser"
           >
-            <div className="card position-relative border-0">
-              <div className="card-body p-3">
-                {user ? (
-                  <>
-                    <p className="fw-bold mb-0">{user.nombre}</p>
-                    <p className="small text-muted mb-0">{user.rut}</p>
-                  </>
-                ) : (
-                  <p className="text-muted mb-0">Usuario no identificado</p>
-                )}
+            <div className="card border-0">
+              <div className="card-body text-center p-3">
+                <p className="fw-bold mb-1 text-uppercase">{user.nombre}</p>
+                <p className="small text-muted mb-2">{user.rut}</p>
+                <hr className="my-2" />
+                <p className="text-secondary mb-0">
+                  {isAdmin ? "Administrador" : "Usuario"}
+                </p>
               </div>
 
               <div className="card-footer p-0 border-top border-translucent">
-                <div className="px-3 py-2">
-                  <button
-                    className="btn btn-danger d-flex flex-center w-100"
-                    onClick={handleLogout}
-                  >
-                    <span className="me-2" data-feather="log-out" />
-                    Cerrar sesión
-                  </button>
-                </div>
+                <button
+                  className="btn btn-danger w-100 rounded-0"
+                  onClick={handleLogout}
+                >
+                  <i className="bi bi-box-arrow-right me-2"></i> Cerrar sesión
+                </button>
               </div>
             </div>
           </div>
