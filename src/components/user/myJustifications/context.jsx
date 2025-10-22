@@ -1,27 +1,38 @@
-// src/components/context/DataContext.jsx
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import listJustificationsService from "src/services/user/justification/list";
-import { useUser } from "src/components/context/UserContext";
 
 const DataContext = createContext(null);
 
+/**
+ * 📦 DataContextProvider
+ * Gestiona las justificaciones del usuario autenticado.
+ * - Usa React Query para obtener datos del backend.
+ * - Permite actualizar filtros dinámicamente (rango de fechas).
+ */
 export const DataContextProvider = ({ children }) => {
-  const { user } = useUser(); // ✅ obtiene el usuario actual
-  const creatorId = user.id;
+  const [filters, setFilters] = useState({ startDate: "", endDate: "" });
 
+  // Hook de consulta — se vuelve a ejecutar cuando cambian los filtros
   const justificationQuery = useQuery({
-    queryKey: ["justifications", creatorId],
-    queryFn: () => listJustificationsService(creatorId),
-    enabled: !!creatorId, // ✅ asegura que no se ejecute si no hay usuario
+    queryKey: ["justifications", filters],
+    queryFn: () => listJustificationsService(filters),
   });
+
+  // Función para actualizar los filtros (desde View)
+  const updateFilters = (newFilters) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  };
 
   return (
     <DataContext.Provider
       value={{
+        justifications: justificationQuery.data || [],
         isLoading: justificationQuery.isLoading,
         isError: justificationQuery.isError,
-        justifications: justificationQuery.data || [],
+        refetch: justificationQuery.refetch,
+        filters,
+        updateFilters,
       }}
     >
       {children}

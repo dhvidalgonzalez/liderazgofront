@@ -10,3 +10,11 @@ Currently, two official plugins are available:
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+
+
+PS D:\wamp64\www\liderazgo> cd .\fuentes\
+PS D:\wamp64\www\liderazgo\fuentes> git fetch origin
+PS D:\wamp64\www\liderazgo\fuentes> git reset --hard origin/main
+HEAD is now at cae5b13 Perfiles y login
+PS D:\wamp64\www\liderazgo\fuentes>
+

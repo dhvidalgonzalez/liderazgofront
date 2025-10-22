@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Detail from "../detail";
 import Update from "../update";
+import { useDataContext } from "../context";
 
 const getEstadoClass = (estado) => {
   switch (estado) {
@@ -40,37 +41,41 @@ const View = ({ justifications }) => {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
+  // ✅ conexión con el contexto
+  const { updateFilters, refetch, isLoading } = useDataContext();
+
+  const handleSearch = () => {
+    updateFilters({ startDate: startDateFrom, endDate: startDateTo });
+    refetch(); // 🔄 fuerza la consulta al backend
+  };
+
+  const handleClear = () => {
+    setSearch("");
+    setRevisionFilter("");
+    setStartDateFrom("");
+    setStartDateTo("");
+    updateFilters({ startDate: "", endDate: "" });
+    refetch(); // 🔄 recarga sin filtros
+    setPage(1);
+  };
+
+  // 🔍 filtrado local (nombre y tipo de revisión)
   const filtered = justifications.filter((j) => {
     const name = j.employeeNombre || "";
     const revision = j.reviewerId ? "manual" : "automatica";
-
     const passesSearch = name.toLowerCase().includes(search.toLowerCase());
     const passesRevision = revisionFilter === "" || revision === revisionFilter;
-
-    const date = j.startDate ? new Date(j.startDate) : null;
-    const from = startDateFrom ? new Date(startDateFrom) : null;
-    const to = startDateTo ? new Date(startDateTo) : null;
-
-    const passesDate =
-      (!from || (date && date >= from)) && (!to || (date && date <= to));
-
-    return passesSearch && passesRevision && passesDate;
+    return passesSearch && passesRevision;
   });
 
-  const totalPages = Math.ceil(filtered.length / pageSize);
-  const currentPageData = filtered.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  // 🔹 paginación local
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const currentPageData = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const renderPageButtons = () => {
     const range = 2;
     let start = Math.max(1, page - range);
     let end = Math.min(totalPages, page + range);
-    if (page <= range) end = Math.min(totalPages, 1 + range * 2);
-    else if (page + range >= totalPages)
-      start = Math.max(1, totalPages - range * 2);
-
     const buttons = [];
     for (let i = start; i <= end; i++) {
       buttons.push(
@@ -85,7 +90,6 @@ const View = ({ justifications }) => {
         </button>
       );
     }
-
     return buttons;
   };
 
@@ -95,13 +99,13 @@ const View = ({ justifications }) => {
         <div className="col-12 col-lg-10 col-xl-10">
           <div className="card shadow-sm">
             <div className="card-header bg-light d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">Justificaciones</h5>
+              <h5 className="mb-0">Mis Justificaciones</h5>
             </div>
 
             <div className="card-body">
-              <p className="text-muted mb-3">
-                Buscar por nombre, tipo o fecha.
-              </p>
+              <p className="text-muted mb-3">Buscar por nombre o rango de fechas.</p>
+
+              {/* 🔍 filtros */}
               <div className="row g-2 mb-3">
                 <div className="col-md-3">
                   <input
@@ -129,33 +133,44 @@ const View = ({ justifications }) => {
                     <option value="automatica">Revisión automática</option>
                   </select>
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <input
                     type="date"
                     className="form-control"
                     value={startDateFrom}
-                    onChange={(e) => {
-                      setStartDateFrom(e.target.value);
-                      setPage(1);
-                    }}
+                    onChange={(e) => setStartDateFrom(e.target.value)}
                   />
                 </div>
-                <div className="col-md-3">
+                <div className="col-md-2">
                   <input
                     type="date"
                     className="form-control"
                     value={startDateTo}
-                    onChange={(e) => {
-                      setStartDateTo(e.target.value);
-                      setPage(1);
-                    }}
+                    onChange={(e) => setStartDateTo(e.target.value)}
                   />
+                </div>
+                <div className="col-md-2 d-flex gap-2">
+                  <button
+                    className="btn btn-success w-100"
+                    onClick={handleSearch}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Buscando..." : "Buscar"}
+                  </button>
+                  <button
+                    className="btn btn-outline-secondary w-100"
+                    onClick={handleClear}
+                    disabled={isLoading}
+                  >
+                    Limpiar
+                  </button>
                 </div>
               </div>
 
+              {/* 📋 tabla */}
               <div className="table-responsive-sm">
                 <table className="table table-sm table-hover text-center align-middle">
-                  <thead className="">
+                  <thead className="table-light">
                     <tr>
                       <th>Nombre</th>
                       <th>RUT</th>
@@ -175,20 +190,20 @@ const View = ({ justifications }) => {
                             {statusMap[j.status] || j.status}
                           </span>
                         </td>
-                        <td className="d-flex justify-content-center gap-2">
+                        <td>
                           <button
-                            className="btn btn-outline-primary btn-sm"
+                            className="btn btn-outline-primary btn-sm rounded-pill"
                             onClick={() => setSelected(j)}
                           >
-                            <i className="bi bi-eye"></i> Ver
+                            Ver
                           </button>
                         </td>
                       </tr>
                     ))}
-                    {currentPageData.length === 0 && (
+                    {currentPageData.length === 0 && !isLoading && (
                       <tr>
                         <td colSpan={5} className="text-muted">
-                          No hay justificaciones para mostrar
+                          No hay justificaciones para mostrar.
                         </td>
                       </tr>
                     )}
@@ -196,6 +211,7 @@ const View = ({ justifications }) => {
                 </table>
               </div>
 
+              {/* 🔹 paginación local */}
               <div className="d-flex justify-content-center mt-3">
                 <button
                   className="btn btn-sm btn-outline-primary me-2"
@@ -216,19 +232,9 @@ const View = ({ justifications }) => {
             </div>
           </div>
 
-          {selected && (
-            <Detail
-              justification={selected}
-              onClose={() => setSelected(null)}
-            />
-          )}
-
-          {updateTarget && (
-            <Update
-              justification={updateTarget}
-              onClose={() => setUpdateTarget(null)}
-            />
-          )}
+          {/* Modales */}
+          {selected && <Detail justification={selected} onClose={() => setSelected(null)} />}
+          {updateTarget && <Update justification={updateTarget} onClose={() => setUpdateTarget(null)} />}
         </div>
       </div>
     </div>

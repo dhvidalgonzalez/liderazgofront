@@ -1,55 +1,102 @@
 import React, { useState, useMemo } from "react";
 import Update from "../update";
+import { useDataContext } from "../context";
 
 /**
  * 💼 Tabla principal de perfiles de empleados
- * Incluye búsqueda, paginación y opción de edición.
+ * - Soporta paginación server-side (vía DataContext) o client-side (fallback).
+ * - Paginación con primera, última y bloque central con "..." cuando crece.
  */
 const View = ({ employeeProfiles }) => {
+  const {
+    // Estos existen si usas el DataContext actualizado con paginación server-side
+    pagination,
+    page: ctxPage,
+    setPage: ctxSetPage,
+    setQueryParams,
+    pageSize: ctxPageSize,
+  } = useDataContext() || {};
+
+  const usingServer = !!pagination; // ¿Viene paginado del backend?
   const [search, setSearch] = useState("");
   const [selectedProfile, setSelectedProfile] = useState(null);
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
 
-  // 🔍 Filtro de búsqueda (name, rut o gerencia)
+  // Estado local solo para fallback client-side
+  const [page, setPage] = useState(1);
+  const localPageSize = 10;
+
+  const effectivePage = usingServer ? (ctxPage || 1) : page;
+  const effectiveSetPage = usingServer
+    ? (p) => ctxSetPage && ctxSetPage(p)
+    : (p) => setPage(p);
+
+  const pageSize = usingServer ? (ctxPageSize || localPageSize) : localPageSize;
+
+  // 🔍 Búsqueda:
+  // - Server-side: delega al backend con setQueryParams({ q, page:1 })
+  // - Client-side: filtra el array localmente
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearch(value);
+    if (usingServer && setQueryParams) {
+      setQueryParams({ q: value, page: 1 });
+    } else {
+      effectiveSetPage(1);
+    }
+  };
+
   const filteredProfiles = useMemo(() => {
+    if (usingServer) return employeeProfiles; // ya vino filtrado/paginado del server
     const query = search.toLowerCase();
     return employeeProfiles.filter((p) => {
-      const name = p.name?.toLowerCase() || "";
-      const rut = p.rut?.toLowerCase() || "";
-      const gerencia = p.gerencia?.toLowerCase() || "";
-      return name.includes(query) || rut.includes(query) || gerencia.includes(query);
+      const name = (p.name || "").toLowerCase();
+      const rut = (p.rut || "").toLowerCase();
+      const gerencia = (p.gerencia || "").toLowerCase();
+      return (
+        name.includes(query) ||
+        rut.includes(query) ||
+        gerencia.includes(query)
+      );
     });
-  }, [employeeProfiles, search]);
+  }, [employeeProfiles, search, usingServer]);
 
-  // 📄 Paginación
-  const totalPages = Math.ceil(filteredProfiles.length / pageSize);
-  const currentPageData = filteredProfiles.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const totalPages = usingServer
+    ? (pagination?.totalPages || 1)
+    : Math.max(1, Math.ceil(filteredProfiles.length / pageSize));
 
-  const renderPageButtons = () => {
-    const range = 2;
-    const start = Math.max(1, page - range);
-    const end = Math.min(totalPages, page + range);
-    const buttons = [];
+  const currentPageData = usingServer
+    ? employeeProfiles // ya viene del backend solo la página actual
+    : filteredProfiles.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
+
+  // 🧮 Genera páginas con elipsis: [1, '...', 4,5,6, '...', N]
+  const buildPagination = (current, total, siblingCount = 1) => {
+    if (total <= 7) {
+      // Pequeño: muestro todo
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+
+    const first = 1;
+    const last = total;
+    const start = Math.max(first + 1, current - siblingCount);
+    const end = Math.min(last - 1, current + siblingCount);
+
+    const pages = [first];
+
+    if (start > first + 1) pages.push("start-ellipsis");
 
     for (let i = start; i <= end; i++) {
-      buttons.push(
-        <button
-          key={i}
-          className={`btn btn-sm mx-1 ${
-            i === page ? "btn-primary" : "btn-outline-primary"
-          }`}
-          onClick={() => setPage(i)}
-        >
-          {i}
-        </button>
-      );
+      pages.push(i);
     }
-    return buttons;
+
+    if (end < last - 1) pages.push("end-ellipsis");
+
+    if (last !== first) pages.push(last);
+
+    // Evitar duplicados por cercanía a extremos
+    return pages.filter((v, i, a) => a.indexOf(v) === i);
   };
+
+  const pageItems = buildPagination(effectivePage, totalPages, 1);
 
   return (
     <div className="container-fluid p-4">
@@ -69,15 +116,12 @@ const View = ({ employeeProfiles }) => {
                     placeholder="Buscar por nombre, RUT o gerencia"
                     className="form-control"
                     value={search}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
+                    onChange={handleSearchChange}
                   />
                 </div>
               </div>
 
-              {/* 📋 Tabla de resultados */}
+              {/* 📋 Tabla */}
               <div className="table-responsive-sm">
                 <table className="table table-sm table-hover text-center align-middle">
                   <thead className="table-light">
@@ -130,21 +174,45 @@ const View = ({ employeeProfiles }) => {
                 </table>
               </div>
 
-              {/* 🔢 Paginador */}
+              {/* 🔢 Paginador con elipsis */}
               {totalPages > 1 && (
-                <div className="d-flex justify-content-center mt-3">
+                <div className="d-flex justify-content-center align-items-center mt-3 gap-1 flex-wrap">
                   <button
-                    className="btn btn-sm btn-outline-primary me-2"
-                    onClick={() => setPage(1)}
-                    disabled={page === 1}
+                    className="btn btn-sm btn-outline-primary me-1"
+                    onClick={() => effectiveSetPage(1)}
+                    disabled={effectivePage === 1}
+                    title="Primera página"
                   >
                     ⏮
                   </button>
-                  {renderPageButtons()}
+
+                  {pageItems.map((item, idx) =>
+                    typeof item === "number" ? (
+                      <button
+                        key={`p-${item}`}
+                        className={`btn btn-sm ${
+                          item === effectivePage ? "btn-primary" : "btn-outline-primary"
+                        }`}
+                        onClick={() => effectiveSetPage(item)}
+                      >
+                        {item}
+                      </button>
+                    ) : (
+                      <span
+                        key={`e-${idx}`}
+                        className="px-2 text-muted"
+                        aria-hidden="true"
+                      >
+                        …
+                      </span>
+                    )
+                  )}
+
                   <button
-                    className="btn btn-sm btn-outline-primary ms-2"
-                    onClick={() => setPage(totalPages)}
-                    disabled={page === totalPages}
+                    className="btn btn-sm btn-outline-primary ms-1"
+                    onClick={() => effectiveSetPage(totalPages)}
+                    disabled={effectivePage === totalPages}
+                    title="Última página"
                   >
                     ⏭
                   </button>

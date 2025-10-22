@@ -1,13 +1,30 @@
-import React from "react";
+// src/components/admin/employeeProfile/EmployeeProfileModal.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import { Formik } from "formik";
 import * as Yup from "yup";
+import {
+  getEmployeeProfileService,
+  createEmployeeProfileService,
+  updateEmployeeProfileService,
+  // upsertEmployeeProfileByRutService, // opcional
+} from "src/services/admin/employeeProfile";
+
+
+const toDateInputFormat = (value) => {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString().split("T")[0];
+};
+
 
 const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
-
   if (!open) return null;
 
-  // ✅ Validación Yup (correo y fecha de término ahora opcionales)
+  const normalizeRut = (rut) =>
+    rut ? rut.toString().replace(/\./g, "").replace(/-/g, "-").trim().toUpperCase() : "";
+
   const validationSchema = Yup.object({
     name: Yup.string().required("Nombre requerido"),
     rut: Yup.string().required("RUT requerido"),
@@ -16,16 +33,62 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
     endDate: Yup.date()
       .nullable()
       .optional()
-      .min(
-        Yup.ref("startDate"),
-        "La fecha de término no puede ser anterior a la de inicio"
-      ),
+      .min(Yup.ref("startDate"), "La fecha de término no puede ser anterior a la de inicio"),
   });
+
+  const todayISO = () => new Date().toISOString().split("T")[0];
+  const withDefaultDates = (values) => {
+    const startDate = values.startDate || todayISO();
+    const endDate = values.endDate || "2099-12-31";
+    return { ...values, startDate, endDate };
+  };
+
+  // 🔎 pre-chequeo de existencia al abrir
+  const [checking, setChecking] = useState(false);
+  const [exists, setExists] = useState(false);
+  const [existingId, setExistingId] = useState(null);
+  const [checkError, setCheckError] = useState(null);
+
+  const rutNormFromInit = useMemo(() => normalizeRut(initialData?.rut || ""), [initialData?.rut]);
+
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      if (!open || !rutNormFromInit) return;
+      try {
+        setChecking(true);
+        setCheckError(null);
+        const { exists, profile } = await getEmployeeProfileService(rutNormFromInit);
+        if (!active) return;
+        setExists(!!exists);
+        setExistingId(profile?.id || null);
+      } catch (e) {
+        if (!active) return;
+        setExists(false);
+        setExistingId(null);
+        setCheckError(
+          e?.response?.data?.message || e?.message || "No se pudo verificar el perfil."
+        );
+      } finally {
+        if (active) setChecking(false);
+      }
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, [open, rutNormFromInit]);
+
+  // Modo update si: ya existe O viene forzado desde initialData
+  const isUpdateMode =
+    exists ||
+    initialData?.mode === "update" ||
+    initialData?.isUpdate === true ||
+    initialData?.isNew === false;
 
   return ReactDOM.createPortal(
     <>
       <div className="modal-backdrop fade show"></div>
-
       <div
         className="modal fade show d-block"
         tabIndex="-1"
@@ -37,34 +100,84 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
             <Formik
               initialValues={{
                 name: initialData?.name || "",
-                rut: initialData?.rut || "",
+                rut: rutNormFromInit || "",
                 email: initialData?.email || "",
                 sapCode: initialData?.sapCode || "",
                 gerencia: initialData?.gerencia || "",
                 empresa: initialData?.empresa || "",
                 position: initialData?.position || "",
-                startDate: initialData?.startDate || "",
-                endDate: initialData?.endDate || "",
+                startDate: toDateInputFormat(initialData?.startDate),
+                endDate: toDateInputFormat(initialData?.endDate),
                 isActive: initialData?.isActive ?? true,
               }}
+
               validationSchema={validationSchema}
               enableReinitialize
-              onSubmit={(values) => onSave(values)}
+              onSubmit={async (rawValues, { setSubmitting, setStatus }) => {
+                try {
+                  setSubmitting(true);
+                  setStatus(null);
+
+                  const rutNorm = normalizeRut(rawValues.rut);
+                  const values = withDefaultDates({ ...rawValues, rut: rutNorm });
+
+                  // ⚡ ya sabemos si existe o no (sin GET extra)
+                  if (isUpdateMode && existingId) {
+                    await updateEmployeeProfileService(existingId, values);
+                    setStatus({ type: "success", msg: "Perfil actualizado correctamente." });
+                  } else if (isUpdateMode && !existingId) {
+                    // Edge: flagged update pero no hubo ID (ej: error al chequear)
+                    // Intentamos crear para no bloquear el flujo
+                    await createEmployeeProfileService(values);
+                    setStatus({ type: "success", msg: "Perfil creado correctamente." });
+                  } else {
+                    await createEmployeeProfileService(values);
+                    setStatus({ type: "success", msg: "Perfil creado correctamente." });
+                  }
+
+                  onSave?.(values);
+                  setTimeout(() => onClose(), 600);
+                } catch (err) {
+                  console.error("❌ Error guardando perfil:", err);
+                  const msg =
+                    err?.response?.data?.message || err?.message || "Error al guardar perfil.";
+                  setStatus({ type: "danger", msg });
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
             >
-              {({ values, errors, touched, handleChange, handleSubmit }) => (
+              {({ values, errors, touched, handleChange, handleSubmit, isSubmitting, status }) => (
                 <form onSubmit={handleSubmit}>
-                  <div className="modal-header bg-success text-white">
+                  <div className="modal-header">
                     <h5 className="modal-title mb-0">
-                      {initialData?.isNew ? "Nuevo Perfil" : "Perfil del Empleado"}
+                      {isUpdateMode ? "Perfil del Empleado (actualización)" : "Nuevo Perfil"}
+                      <span className="ms-2">
+                        {checking ? (
+                          <span className="badge bg-secondary">Verificando…</span>
+                        ) : exists ? (
+                          <span className="badge bg-info text-dark">Existe</span>
+                        ) : (
+                          <span className="badge bg-success">Nuevo</span>
+                        )}
+                      </span>
                     </h5>
-                    <button
-                      type="button"
-                      className="btn-close btn-close-white"
-                      onClick={onClose}
-                    ></button>
+                    <button type="button" className="btn-close" onClick={onClose}></button>
                   </div>
 
                   <div className="modal-body">
+                    {checkError && (
+                      <div className="alert alert-warning py-2 mb-3">
+                        {checkError} — puedes continuar y guardar igualmente.
+                      </div>
+                    )}
+
+                    {status && (
+                      <div className={`alert alert-${status.type}`} role="alert">
+                        {status.msg}
+                      </div>
+                    )}
+
                     <div className="row g-3">
                       {/* === Fila 1 === */}
                       <div className="col-md-6">
@@ -159,7 +272,7 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
                         <input
                           type="date"
                           name="startDate"
-                          value={values.startDate}
+                          value={values.startDate || ""}
                           onChange={handleChange}
                           className="form-control"
                         />
@@ -169,11 +282,11 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
                       </div>
 
                       <div className="col-md-3">
-                        <label className="form-label">Fecha de Término (opcional)</label>
+                        <label className="form-label">Fecha de Término</label>
                         <input
                           type="date"
                           name="endDate"
-                          value={values.endDate}
+                          value={values.endDate || ""}
                           onChange={handleChange}
                           className="form-control"
                         />
@@ -189,14 +302,11 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
                             type="checkbox"
                             name="isActive"
                             id="isActive"
-                            checked={values.isActive}
+                            checked={!!values.isActive}
                             onChange={handleChange}
                             className="form-check-input"
                           />
-                          <label
-                            htmlFor="isActive"
-                            className="form-check-label user-select-none"
-                          >
+                          <label htmlFor="isActive" className="form-check-label user-select-none">
                             Activo
                           </label>
                         </div>
@@ -205,15 +315,11 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
                   </div>
 
                   <div className="modal-footer">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={onClose}
-                    >
+                    <button type="button" className="btn btn-secondary" onClick={onClose}>
                       Cerrar
                     </button>
-                    <button type="submit" className="btn btn-success px-4">
-                      Guardar
+                    <button type="submit" className="btn btn-success px-4" disabled={isSubmitting}>
+                      {isSubmitting ? "Guardando..." : "Guardar"}
                     </button>
                   </div>
                 </form>

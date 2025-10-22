@@ -9,7 +9,7 @@ import {
   getEmployeeProfileService,
   createEmployeeProfileService,
   updateEmployeeProfileService,
-} from "src/services/employeeProfile";
+} from "src/services/admin/employeeProfile";
 
 import { justificationTypes } from "src/constants";
 import { useUser } from "src/components/context/UserContext";
@@ -54,6 +54,14 @@ const View = () => {
     startDate: "",
     endDate: "",
     description: "",
+  });
+
+  // ❗ Errores de campos requeridos para resaltar inputs
+  const [fieldErrors, setFieldErrors] = useState({
+    userId: false,
+    type: false,
+    startDate: false,
+    endDate: false,
   });
 
   const [modal, setModal] = useState({ open: false, error: "", data: null });
@@ -125,6 +133,10 @@ const View = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // si el usuario corrige el campo, limpiamos su error visual
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: false }));
+    }
   };
 
   const handleModalSubmit = () => {
@@ -134,71 +146,37 @@ const View = () => {
     setAttachedFile(null);
   };
 
-  // ✅ Al seleccionar trabajador, abrir modal de perfil
-// ==================== FUNCIONES ====================
+  // ✅ Selección de trabajador y carga de perfil
+  const handleWorkerSelect = async (rut) => {
+    const selected = trabajadores.find((t) => t.RutCorregido?.toString() === rut);
+    if (!selected) return;
 
-// ✅ Selección de trabajador y carga de perfil
-// ==================== FUNCIONES ====================
+    // Actualiza campos del formulario principal
+    setFormData((prev) => ({
+      ...prev,
+      userId: rut,
+      employeeNombre: selected.Nombre || "",
+      employeeRut: selected.Rut || "",
+      employeeEmail: selected.Email || "",
+      employeeSapCode: selected.Sap || "",
+      employeeGerencia: selected.Gerencia || "",
+      employeeEmpresa: selected.Empresa || "",
+    }));
+    // limpiar error visual del selector si estaba marcado
+    if (fieldErrors.userId) {
+      setFieldErrors((prev) => ({ ...prev, userId: false }));
+    }
 
-// ✅ Selección de trabajador y carga de perfil
-const handleWorkerSelect = async (rut) => {
-  const selected = trabajadores.find((t) => t.RutCorregido?.toString() === rut);
-  if (!selected) return;
+    try {
+      // 🔹 Consultar el perfil por RUT
+      const response = await getEmployeeProfileService(selected.Rut);
 
-  // Actualiza campos del formulario principal
-  setFormData((prev) => ({
-    ...prev,
-    userId: rut,
-    employeeNombre: selected.Nombre || "",
-    employeeRut: selected.Rut || "",
-    employeeEmail: selected.Email || "",
-    employeeSapCode: selected.Sap || "",
-    employeeGerencia: selected.Gerencia || "",
-    employeeEmpresa: selected.Empresa || "",
-  }));
+      // Normalizamos la respuesta (puede venir {exists, profile} o el perfil directo)
+      const profile = response?.profile ?? response ?? null;
+      const exists = response?.exists ?? !!profile;
 
-  try {
-    // 🔹 Consultar el perfil por RUT
-    const response = await getEmployeeProfileService(selected.Rut);
-
-
-    // Normalizamos la respuesta (puede venir {exists, profile} o el perfil directo)
-    const profile = response?.profile ?? response ?? null;
-    const exists = response?.exists ?? !!profile;
-
-    // 🔹 Datos base del trabajador
-    const baseData = {
-      rut: selected.Rut,
-      name: selected.Nombre,
-      email: selected.Email || "",
-      sapCode: selected.Sap || "",
-      gerencia: selected.Gerencia || "",
-      empresa: selected.Empresa || "",
-      position: "",
-      startDate: new Date().toISOString().split("T")[0],
-      endDate: "",
-      isActive: true,
-    };
-
-    // 🔹 Si hay perfil existente, fusionamos datos
-    const initialData =
-      exists && profile
-        ? { ...baseData, ...profile, id: profile.id, isNew: false }
-        : { ...baseData, id: null, isNew: true };
-
-    // 🔹 Abrimos el modal con los datos correctos
-    setProfileModal({
-      open: true,
-      data: initialData,
-      isNew: !exists,
-    });
-  } catch (err) {
-    console.error("❌ Error al cargar perfil:", err);
-
-    // 🔹 Si ocurre error o no hay perfil, inicializamos con los datos del trabajador
-    setProfileModal({
-      open: true,
-      data: {
+      // 🔹 Datos base del trabajador
+      const baseData = {
         rut: selected.Rut,
         name: selected.Nombre,
         email: selected.Email || "",
@@ -209,63 +187,98 @@ const handleWorkerSelect = async (rut) => {
         startDate: new Date().toISOString().split("T")[0],
         endDate: "",
         isActive: true,
-        isNew: true,
-        id: null,
-      },
-      isNew: true,
-    });
-  }
-};
+      };
 
-// ✅ Guardar perfil (crear o actualizar)
-const handleSaveProfile = async (profile) => {
-  try {
+      // 🔹 Si hay perfil existente, fusionamos datos
+      const initialData =
+        exists && profile
+          ? { ...baseData, ...profile, id: profile.id, isNew: false }
+          : { ...baseData, id: null, isNew: true };
 
-
-    // 🔍 Verificar si el perfil ya existe en backend
-    const check = await getEmployeeProfileService(profile.rut);
-
-    if (check?.exists && check?.profile?.id) {
-      // ✅ Ya existe → actualizamos
-      await updateEmployeeProfileService(check.profile.id, profile);
-      setAlert({
-        type: "success",
-        message: "Perfil actualizado correctamente.",
+      // 🔹 Abrimos el modal con los datos correctos
+      setProfileModal({
+        open: true,
+        data: initialData,
+        isNew: !exists,
       });
-    } else {
-      // 🆕 No existe → creamos
-      await createEmployeeProfileService(profile);
-      setAlert({
-        type: "success",
-        message: "Perfil creado correctamente.",
+    } catch (err) {
+      console.error("❌ Error al cargar perfil:", err);
+
+      // 🔹 Si ocurre error o no hay perfil, inicializamos con los datos del trabajador
+      setProfileModal({
+        open: true,
+        data: {
+          rut: selected.Rut,
+          name: selected.Nombre,
+          email: selected.Email || "",
+          sapCode: selected.Sap || "",
+          gerencia: selected.Gerencia || "",
+          empresa: selected.Empresa || "",
+          position: "",
+          startDate: new Date().toISOString().split("T")[0],
+          endDate: "",
+          isActive: true,
+          isNew: true,
+          id: null,
+        },
+        isNew: true,
       });
     }
+  };
 
-    // 🔹 Cerrar modal y refrescar cache
-    setProfileModal({ open: false, data: null, isNew: false });
-    queryClient.invalidateQueries({ queryKey: ["employeeProfiles"] });
-  } catch (err) {
-    console.error("❌ Error en handleSaveProfile:", err);
-    setAlert({
-      type: "danger",
-      message:
-        "Error al guardar perfil: " + (err.message || "Error desconocido"),
-    });
-  }
-};
+  // ✅ Guardar perfil (crear o actualizar)
+  const handleSaveProfile = async (profile) => {
+    try {
+      // 🔍 Verificar si el perfil ya existe en backend
+      const check = await getEmployeeProfileService(profile.rut);
 
+      if (check?.exists && check?.profile?.id) {
+        // ✅ Ya existe → actualizamos
+        await updateEmployeeProfileService(check.profile.id, profile);
+        setAlert({
+          type: "success",
+          message: "Perfil actualizado correctamente.",
+        });
+      } else {
+        // 🆕 No existe → creamos
+        await createEmployeeProfileService(profile);
+        setAlert({
+          type: "success",
+          message: "Perfil creado correctamente.",
+        });
+      }
+
+      // 🔹 Cerrar modal y refrescar cache
+      setProfileModal({ open: false, data: null, isNew: false });
+      queryClient.invalidateQueries({ queryKey: ["employeeProfiles"] });
+    } catch (err) {
+      console.error("❌ Error en handleSaveProfile:", err);
+      setAlert({
+        type: "danger",
+        message:
+          "Error al guardar perfil: " + (err.message || "Error desconocido"),
+      });
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const { userId, type, startDate, endDate } = formData;
-    if (!userId || !type || !startDate || !endDate) {
+    // Validación de requeridos (incluye type)
+    const requiredFields = ["userId", "type", "startDate", "endDate"];
+    const errors = {};
+    requiredFields.forEach((field) => {
+      if (!formData[field]) errors[field] = true;
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors((prev) => ({ ...prev, ...errors }));
       setAlert({ type: "danger", message: "Completa todos los campos requeridos." });
       return;
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
     const diff = (end - start) / (1000 * 60 * 60 * 24) + 1;
 
     if (start > end) {
@@ -273,12 +286,12 @@ const handleSaveProfile = async (profile) => {
       return;
     }
 
-    if (type === "VACATION" && diff < 14) {
+    if (formData.type === "VACATION" && diff < 14) {
       setModal({ open: true, error: "Las vacaciones deben ser mínimo 14 días." });
       return;
     }
 
-    if (type !== "VACATION" && diff < 2) {
+    if (formData.type !== "VACATION" && diff < 2) {
       setModal({ open: true, error: "Debe seleccionar más de 1 día." });
       return;
     }
@@ -381,13 +394,15 @@ const handleSaveProfile = async (profile) => {
                   </div>
                 </div>
 
-                {/* === Selector de trabajador === */}
+                {/* === Selector de trabajador (requerido) === */}
                 <div className="row g-2 mb-2">
                   <div className="col-md-12">
-                    <label className="form-label">Trabajador</label>
+                    <label className="form-label">
+                      Trabajador <span className="text-danger">*</span>
+                    </label>
                     <select
                       name="userId"
-                      className="form-select"
+                      className={`form-select ${fieldErrors.userId ? "is-invalid" : ""}`}
                       value={formData.userId}
                       onChange={(e) => handleWorkerSelect(e.target.value)}
                     >
@@ -398,6 +413,9 @@ const handleSaveProfile = async (profile) => {
                         </option>
                       ))}
                     </select>
+                    {fieldErrors.userId && (
+                      <div className="invalid-feedback">Este campo es obligatorio</div>
+                    )}
                   </div>
                 </div>
 
@@ -458,35 +476,47 @@ const handleSaveProfile = async (profile) => {
                   </div>
                 </div>
 
-                {/* === Fechas y tipo === */}
+                {/* === Fechas y tipo (requeridos) === */}
                 <div className="row g-2 mt-3">
                   <div className="col-md-4">
-                    <label className="form-label">Fecha Inicio</label>
+                    <label className="form-label">
+                      Fecha Inicio <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="date"
                       name="startDate"
                       value={formData.startDate}
                       onChange={handleChange}
-                      className="form-control"
+                      className={`form-control ${fieldErrors.startDate ? "is-invalid" : ""}`}
                     />
+                    {fieldErrors.startDate && (
+                      <div className="invalid-feedback">Este campo es obligatorio</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Fecha Fin</label>
+                    <label className="form-label">
+                      Fecha Fin <span className="text-danger">*</span>
+                    </label>
                     <input
                       type="date"
                       name="endDate"
                       value={formData.endDate}
                       onChange={handleChange}
-                      className="form-control"
+                      className={`form-control ${fieldErrors.endDate ? "is-invalid" : ""}`}
                     />
+                    {fieldErrors.endDate && (
+                      <div className="invalid-feedback">Este campo es obligatorio</div>
+                    )}
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label">Tipo</label>
+                    <label className="form-label">
+                      Tipo <span className="text-danger">*</span>
+                    </label>
                     <select
                       name="type"
                       value={formData.type}
                       onChange={handleChange}
-                      className="form-select"
+                      className={`form-select ${fieldErrors.type ? "is-invalid" : ""}`}
                     >
                       <option value="">Tipo Justificación</option>
                       {Object.entries(justificationTypes).map(([value, label]) => (
@@ -495,6 +525,9 @@ const handleSaveProfile = async (profile) => {
                         </option>
                       ))}
                     </select>
+                    {fieldErrors.type && (
+                      <div className="invalid-feedback">Este campo es obligatorio</div>
+                    )}
                   </div>
                 </div>
 

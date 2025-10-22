@@ -1,12 +1,8 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import updateJustificationStatusService from "src/services/admin/justification/update";
-import { useUser } from "src/components/context/UserContext";
 
 const View = ({ justification, onClose }) => {
-  const { user } = useUser();
-  const reviewerId = user?.id || user?.sub || null;
-
   const [status, setStatus] = useState(justification.status);
   const [reviewerCause, setReviewerCause] = useState(
     justification.reviewerCause || ""
@@ -20,10 +16,9 @@ const View = ({ justification, onClose }) => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: ({ id, status, reviewerId, reviewerCause, reviewerComment }) =>
+    mutationFn: ({ id, status, reviewerCause, reviewerComment }) =>
       updateJustificationStatusService(id, {
         status,
-        reviewerId,
         reviewerCause,
         reviewerComment,
       }),
@@ -38,21 +33,16 @@ const View = ({ justification, onClose }) => {
   });
 
   const handleUpdate = () => {
-    if (!reviewerId) {
-      setError("Usuario revisor no identificado.");
-      return;
-    }
-
-    if (status === "REJECTED" && !reviewerCause) {
+    if (status === "REJECTED" && !reviewerCause.trim()) {
       setError("Debe ingresar una causa si rechaza la justificación.");
       return;
     }
 
+    setError("");
     setLoading(true);
     mutation.mutate({
       id: justification.id,
       status,
-      reviewerId,
       reviewerCause,
       reviewerComment,
     });

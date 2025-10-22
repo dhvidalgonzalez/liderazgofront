@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateEmployeeProfileService } from "src/services/employeeProfile";
+import { updateEmployeeProfileService } from "src/services/admin/employeeProfile";
 
 const View = ({ profile, onClose }) => {
   const [form, setForm] = useState({

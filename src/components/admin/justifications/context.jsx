@@ -5,6 +5,7 @@ import listJustificationsService from "src/services/admin/justification/list";
 const DataContext = createContext(null);
 
 export const DataContextProvider = ({ children }) => {
+  // 🔹 Filtros activos en el formulario
   const [filters, setFilters] = useState({
     search: "",
     revisionType: "",
@@ -12,7 +13,7 @@ export const DataContextProvider = ({ children }) => {
     createdAtEnd: "",
   });
 
-  // Inicializa con el rango del último mes
+  // 🔹 Filtros aplicados (último mes por defecto)
   const [appliedFilters, setAppliedFilters] = useState(() => {
     const endDate = new Date();
     const startDate = new Date();
@@ -26,18 +27,20 @@ export const DataContextProvider = ({ children }) => {
     };
   });
 
+  // 🔹 Query de justificaciones (admin)
   const justificationQuery = useQuery({
-    queryKey: ["justifications", appliedFilters],
-    queryFn: () => {
-      console.log("🔄 Fetching with filters:", appliedFilters); // 👈 útil para depurar
-      return listJustificationsService(appliedFilters);
+    queryKey: ["admin-justifications", appliedFilters],
+    queryFn: async () => {
+      const res = await listJustificationsService(appliedFilters);
+      // El backend ya devuelve un arreglo directo
+      return Array.isArray(res) ? res : res?.data || [];
     },
-    keepPreviousData: true,
+    keepPreviousData: false,
+    refetchOnWindowFocus: false,
   });
 
-  const applyFilters = () => {
-    setAppliedFilters({ ...filters });
-  };
+  // 🔹 Aplica filtros (dispara el refetch)
+  const applyFilters = () => setAppliedFilters({ ...filters });
 
   const value = useMemo(
     () => ({
@@ -47,6 +50,7 @@ export const DataContextProvider = ({ children }) => {
       filters,
       setFilters,
       applyFilters,
+      refetch: justificationQuery.refetch,
     }),
     [
       justificationQuery.isLoading,
