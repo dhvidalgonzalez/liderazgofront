@@ -22,16 +22,14 @@ const Header = () => {
 
   return (
     <nav className="navbar navbar-top fixed-top navbar-expand-lg bg-dark" id="navbarTop">
-      {/* Logo */}
-      <div className="navbar-logo">
+      {/* Izquierda: Logo plataforma */}
+      <div className="navbar-logo d-flex align-items-center">
         <Link className="navbar-brand me-1 me-sm-3" to="/home">
-          <div className="d-flex align-items-center">
-            <img src={plataformaNavbar} alt="plataforma" width="180" />
-          </div>
+          <img src={plataformaNavbar} alt="plataforma" width="180" />
         </Link>
       </div>
 
-      {/* Menú central */}
+      {/* Centro: menú principal */}
       <div
         className="collapse navbar-collapse navbar-top-collapse order-1 order-lg-0 justify-content-center"
         id="navbarTopCollapse"
@@ -50,7 +48,6 @@ const Header = () => {
             </li>
           )}
 
-          {/* Siempre visibles */}
           <li className="nav-item">
             <NavLink
               to="/createJustification"
@@ -73,83 +70,62 @@ const Header = () => {
             </NavLink>
           </li>
 
-          {/* Solo visible si es administrador */}
           {isAdmin && (
-            <li className="nav-item">
-              <NavLink
-                to="/adminJustifications"
-                className={({ isActive }) =>
-                  `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
-                }
-              >
-                Administrar Justificaciones
-              </NavLink>
-            </li>
-          )}
-
-            {/* Solo visible si es administrador */}
-          {isAdmin && (
-            <li className="nav-item">
-              <NavLink
-                to="/employeeProfiles"
-                className={({ isActive }) =>
-                  `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
-                }
-              >
-                 Perfiles
-              </NavLink>
-            </li>
+            <>
+              <li className="nav-item">
+                <NavLink
+                  to="/adminJustifications"
+                  className={({ isActive }) =>
+                    `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
+                  }
+                >
+                  Administrar Justificaciones
+                </NavLink>
+              </li>
+              <li className="nav-item">
+                <NavLink
+                  to="/employeeProfiles"
+                  className={({ isActive }) =>
+                    `nav-link text-white lh-1 ${isActive ? "fw-bold bg-primary" : ""}`
+                  }
+                >
+                  Perfiles
+                </NavLink>
+              </li>
+            </>
           )}
         </ul>
       </div>
 
-      {/* Menú usuario */}
-      <ul className="navbar-nav navbar-nav-icons flex-row">
-        <li className="nav-item dropdown mx-4">
-          <a
-            className="nav-link lh-1 pe-0"
-            id="navbarDropdownUser"
-            href="#!"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-haspopup="true"
-            aria-expanded="false"
-          >
-            <div className="avatar avatar-l">
-              <img className="rounded-circle" src={logoUser} alt="User" />
+      {/* Derecha: info de usuario + botón Cerrar sesión (sin dropdown) */}
+      <div className="d-flex align-items-center ms-auto gap-3">
+        <div className="d-flex align-items-center text-white small">
+          <img
+            src={logoUser}
+            alt="User"
+            className="rounded-circle me-2"
+            style={{ width: 32, height: 32, objectFit: "cover" }}
+          />
+            <div className="d-none d-md-flex flex-column lh-1">
+              <strong className="text-uppercase">{user.nombre}</strong>
+              <span className="text-muted" style={{ fontSize: "0.8rem" }}>
+                {isAdmin ? "Administrador" : "Usuario"} · {user.rut}
+              </span>
             </div>
-          </a>
+        </div>
 
-          <div
-            className="dropdown-menu dropdown-menu-end navbar-dropdown-caret py-0 dropdown-profile shadow border"
-            aria-labelledby="navbarDropdownUser"
-          >
-            <div className="card border-0">
-              <div className="card-body text-center p-3">
-                <p className="fw-bold mb-1 text-uppercase">{user.nombre}</p>
-                <p className="small text-muted mb-2">{user.rut}</p>
-                <hr className="my-2" />
-                <p className="text-secondary mb-0">
-                  {isAdmin ? "Administrador" : "Usuario"}
-                </p>
-              </div>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-light"
+          onClick={handleLogout}
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+        >
+          Cerrar sesión
+        </button>
 
-              <div className="card-footer p-0 border-top border-translucent">
-                <button
-                  className="btn btn-danger w-100 rounded-0"
-                  onClick={handleLogout}
-                >
-                  <i className="bi bi-box-arrow-right me-2"></i> Cerrar sesión
-                </button>
-              </div>
-            </div>
-          </div>
-        </li>
-
-        <li className="nav-item">
-          <img src={logosNavbar} width="100" alt="Logos" />
-        </li>
-      </ul>
+        <img src={logosNavbar} width="100" alt="Logos" />
+      </div>
     </nav>
   );
 };
