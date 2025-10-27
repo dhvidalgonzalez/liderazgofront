@@ -18,6 +18,16 @@ const requestPasswordCodeService = async ({ rut }) => {
     return res;
   } catch (error) {
     console.error("❌ Error en requestPasswordCodeService:", error);
+    const backend = error?.response?.data;
+    // Reenvía mensaje legible si viene del backend
+    if (backend?.mensaje || backend?.detalle) {
+      return {
+        success: false,
+        mensaje: backend.mensaje,
+        detalle: backend.detalle,
+        vigencia: backend.vigencia,
+      };
+    }
     throw error;
   }
 };
