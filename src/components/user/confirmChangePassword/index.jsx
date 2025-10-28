@@ -1,9 +1,8 @@
-// src/components/login/ConfirmChangePassword.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import LoginBase from "src/components/base/login";
 
-// 👇 NUEVOS servicios separados
+// servicios
 import temporalPasswordService from "src/services/login/temporalPasswordService";
 import confirmPasswordService from "src/services/login/confirmPasswordService";
 
@@ -22,13 +21,18 @@ const formatRut = (value) => {
   return `${formatted}-${dv}`;
 };
 
-// Política igual que backend: 8+ chars, 1 mayús, 1 minús, 1 número y un especial . , ; : * / + - = @ # $
+// Política: 8+ chars, 1 mayús, 1 minús, 1 número y un especial . , ; : * / + - = @ # $
 const PASSWORD_POLICY =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[.,;:*\/+\-=@#$])[A-Za-z\d.,;:*\/+\-=@#$]+$/;
 
-const ConfirmChangePassword = () => {
-  const [rut, setRut] = useState("");
-  const [oldPassword, setOldPassword] = useState(""); // clave actual/temporal
+const ConfirmChangePassword = ({
+  embedded = false,
+  initialRut = "",
+  initialOldPassword = "",
+  onSuccess,
+}) => {
+  const [rut, setRut] = useState(initialRut ? formatRut(initialRut) : "");
+  const [oldPassword, setOldPassword] = useState(initialOldPassword || "");
   const [newPassword, setNewPassword] = useState("");
   const [newPassword2, setNewPassword2] = useState("");
 
@@ -50,6 +54,7 @@ const ConfirmChangePassword = () => {
     if (newPassword === oldPassword)
       return "La nueva contraseña no puede ser igual a la anterior.";
     return null;
+    // 👆 el backend reforzará la misma política
   };
 
   const handleSubmit = async (e) => {
@@ -97,6 +102,7 @@ const ConfirmChangePassword = () => {
         setOldPassword("");
         setNewPassword("");
         setNewPassword2("");
+        if (typeof onSuccess === "function") onSuccess();
       } else {
         const msg =
           dataConfirm?.detalle ||
@@ -126,9 +132,11 @@ const ConfirmChangePassword = () => {
     }
   };
 
-  return (
-    <LoginBase>
-      <h3 className="fw-bold text-primary">Confirmar cambio de contraseña</h3>
+  const content = (
+    <>
+      <h3 className={embedded ? "fw-bold" : "fw-bold text-primary"}>
+        Confirmar cambio de contraseña
+      </h3>
       <p className="text-muted mb-3">
         Ingresa tu RUT, tu clave actual/temporal y define tu nueva contraseña.
       </p>
@@ -138,7 +146,9 @@ const ConfirmChangePassword = () => {
 
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
-          <label htmlFor="rut" className="form-label">RUT</label>
+          <label htmlFor="rut" className="form-label">
+            RUT
+          </label>
           <input
             id="rut"
             type="text"
@@ -209,14 +219,18 @@ const ConfirmChangePassword = () => {
           {loading ? "Procesando..." : "CONFIRMAR CAMBIO DE CONTRASEÑA"}
         </button>
 
-        <div className="text-center mt-3">
-          <Link to="/login" className="text-decoration-none">
-            Volver a ingresar
-          </Link>
-        </div>
+        {!embedded && (
+          <div className="text-center mt-3">
+            <Link to="/login" className="text-decoration-none">
+              Volver a ingresar
+            </Link>
+          </div>
+        )}
       </form>
-    </LoginBase>
+    </>
   );
+
+  return embedded ? content : <LoginBase>{content}</LoginBase>;
 };
 
 export default ConfirmChangePassword;
