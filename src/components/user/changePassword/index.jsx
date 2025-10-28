@@ -34,6 +34,7 @@ const ChangePassword = () => {
   // 🚀 Enviar solicitud de recuperación
   // ============================================================
   const handleSubmit = async (e) => {
+    console.log("🚀 ~ handleSubmit ~ e:", e)
     e.preventDefault();
     setOkMsg("");
     setErrMsg("");
@@ -41,6 +42,7 @@ const ChangePassword = () => {
 
     try {
       const res = await requestPasswordCodeService({ rut });
+      console.log("🚀 ~ handleSubmit ~ res:", res)
       const data = res?.data ?? res ?? {};
 
       // ✅ Si el backend responde con éxito
@@ -69,6 +71,7 @@ const ChangePassword = () => {
         setErrMsg(msg);
       }
     } catch (err) {
+      console.log("🚀 ~ handleSubmit ~ err:", err)
       const data = err?.response?.data || {};
       const detalle =
         data?.detalle ||
@@ -119,8 +122,8 @@ const ChangePassword = () => {
         </button>
 
         <div className="text-center mt-3">
-          <Link to="/login" className="text-decoration-none">
-            Volver a ingresar
+          <Link to="/changePassword/confirm" className="text-decoration-none">
+            Acceder con clave temporal
           </Link>
         </div>
       </form>

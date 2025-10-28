@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
@@ -5,22 +6,31 @@ import CreateJustification from "./components/user/justification";
 import MyJustifications from "./components/user/myJustifications";
 import Home from "./components/user/home";
 import Login from "./components/user/login";
-import ChangePassword from "./components/user/changePassword";
+
+// Recuperación (pública)
+import ChangePassword from "./components/user/changePassword"; // solicitar código
+
+
 import AdminJustifications from "./components/admin/justifications";
 
 import { UserProvider } from "src/components/context/UserContext";
 import ProtectedRoute from "src/components/auth/ProtectedRoute";
 import EmployeeProfile from "./components/user/employeeProfile";
+import ConfirmChangePassword from "./components/user/confirmChangePassword";
 
 const basename = import.meta.env.VITE_BASENAME || "/";
 
 const router = createBrowserRouter(
   [
-    // Públicas
+    // ======= Públicas =======
     { path: "/login", element: <Login /> },
-    { path: "/changePassword", element: <ChangePassword /> },
 
-    // Protegidas
+    // Recuperación de clave
+    { path: "/changePassword", element: <ChangePassword /> },                  // solicita correo con código
+    { path: "/changePassword/confirm", element: <ConfirmChangePassword /> },   // ⬅️ ruta corregida
+
+
+    // ======= Protegidas =======
     {
       path: "/home",
       element: (
@@ -53,8 +63,7 @@ const router = createBrowserRouter(
         </ProtectedRoute>
       ),
     },
-
-      {
+    {
       path: "/employeeProfiles",
       element: (
         <ProtectedRoute>
@@ -62,7 +71,8 @@ const router = createBrowserRouter(
         </ProtectedRoute>
       ),
     },
-    // Redirect raíz -> home (protegida)
+
+    // Raíz -> home (protegida)
     {
       path: "/",
       element: (
@@ -71,6 +81,9 @@ const router = createBrowserRouter(
         </ProtectedRoute>
       ),
     },
+
+    // (opcional) catch-all: manda a login si la ruta no existe
+    // { path: "*", element: <Login /> },
   ],
   { basename }
 );
