@@ -8,7 +8,7 @@ export const DataContextProvider = ({ children }) => {
   // 🔹 Filtros activos en el formulario
   const [filters, setFilters] = useState({
     search: "",
-    revisionType: "",
+    revisionType: "",       // "" | "manual" | "automatica" (filtro solo local)
     createdAtStart: "",
     createdAtEnd: "",
   });
@@ -18,7 +18,6 @@ export const DataContextProvider = ({ children }) => {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 1);
-
     return {
       search: "",
       revisionType: "",
@@ -32,7 +31,6 @@ export const DataContextProvider = ({ children }) => {
     queryKey: ["admin-justifications", appliedFilters],
     queryFn: async () => {
       const res = await listJustificationsService(appliedFilters);
-      // El backend ya devuelve un arreglo directo
       return Array.isArray(res) ? res : res?.data || [];
     },
     keepPreviousData: false,

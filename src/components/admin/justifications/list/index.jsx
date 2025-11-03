@@ -13,9 +13,7 @@ const List = () => {
   } = useDataContext();
 
   if (isLoading) {
-    return (
-      <div className="alert alert-primary">Cargando justificaciones...</div>
-    );
+    return <div className="alert alert-primary">Cargando justificaciones...</div>;
   }
 
   if (isError) {

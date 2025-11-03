@@ -16,7 +16,11 @@ export const DataContextProvider = ({ children }) => {
   // Hook de consulta — se vuelve a ejecutar cuando cambian los filtros
   const justificationQuery = useQuery({
     queryKey: ["justifications", filters],
-    queryFn: () => listJustificationsService(filters),
+    queryFn: async () => {
+      const res = await listJustificationsService(filters);
+      // Aseguramos que siempre retorne un array
+      return Array.isArray(res) ? res : (res?.data || []);
+    },
   });
 
   // Función para actualizar los filtros (desde View)

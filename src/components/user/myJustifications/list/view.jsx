@@ -3,6 +3,7 @@ import Detail from "../detail";
 import Update from "../update";
 import { useDataContext } from "../context";
 
+// Badges por estado
 const getEstadoClass = (estado) => {
   switch (estado) {
     case "PENDING":
@@ -60,7 +61,7 @@ const View = ({ justifications }) => {
   };
 
   // 🔍 filtrado local (nombre y tipo de revisión)
-  const filtered = justifications.filter((j) => {
+  const filtered = (justifications || []).filter((j) => {
     const name = j.employeeNombre || "";
     const revision = j.reviewerId ? "manual" : "automatica";
     const passesSearch = name.toLowerCase().includes(search.toLowerCase());
@@ -200,7 +201,7 @@ const View = ({ justifications }) => {
                         </td>
                       </tr>
                     ))}
-                    {currentPageData.length === 0 && !isLoading && (
+                    {currentPageData.length === 0 && (
                       <tr>
                         <td colSpan={5} className="text-muted">
                           No hay justificaciones para mostrar.

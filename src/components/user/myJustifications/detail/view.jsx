@@ -1,4 +1,5 @@
 import React from "react";
+import downloadJustificationDocument from "src/services/user/justification/downloadJustificationDocument";
 
 const typeMap = {
   VACATION: "Vacaciones",
@@ -16,6 +17,33 @@ const statusMap = {
 };
 
 const View = ({ justification, onClose }) => {
+  const handleDownload = async () => {
+    try {
+      const base = `justificacion_${(justification.employeeRut || "rut")
+        .replace(/\./g, "")
+        .replace(/[^a-zA-Z0-9_-]/g, "")}_${(justification.type || "doc")
+        .toString()
+        .toLowerCase()}`;
+
+      // Hints: usa MIME guardado o, si no, la extensión del documentUrl
+      const hintMime = justification.documentMime || "";
+      const hintExt =
+        hintMime
+          ? "" // si tenemos MIME, no necesitamos ext
+          : (justification.documentUrl && /(\.[a-z0-9]{2,5})(?:\?|#|$)/i.test(justification.documentUrl)
+              ? justification.documentUrl.split(".").pop().split(/[?#]/)[0]
+              : "");
+
+      await downloadJustificationDocument(justification.id, base, {
+        hintMime,
+        hintExt,
+      });
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "No fue posible descargar el documento.");
+    }
+  };
+
   return (
     <div
       className="modal fade show d-block"
@@ -41,8 +69,7 @@ const View = ({ justification, onClose }) => {
               <strong>Email:</strong> {justification.employeeEmail || "—"}
             </p>
             <p>
-              <strong>Código SAP:</strong>{" "}
-              {justification.employeeSapCode || "—"}
+              <strong>Código SAP:</strong> {justification.employeeSapCode || "—"}
             </p>
             {justification.employeeGerencia && (
               <p>
@@ -50,27 +77,26 @@ const View = ({ justification, onClose }) => {
               </p>
             )}
             <p>
-              <strong>Tipo:</strong>{" "}
-              {typeMap[justification.type] || justification.type || "—"}
+              <strong>Tipo:</strong> {typeMap[justification.type] || justification.type || "—"}
             </p>
             <p>
-              <strong>Estado:</strong>{" "}
-              {statusMap[justification.status] || justification.status || "—"}
+              <strong>Estado:</strong> {statusMap[justification.status] || justification.status || "—"}
             </p>
             <p>
               <strong>Descripción:</strong> {justification.description || "—"}
             </p>
-            {justification.documentUrl && (
-              <p>
-                <strong>Documento:</strong>{" "}
-                <a
-                  href={justification.documentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Ver documento
-                </a>
-              </p>
+
+            {(justification.documentUrl || justification.documentFilename) ? (
+              <div className="d-flex align-items-center gap-2">
+                <button className="btn btn-outline-primary" onClick={handleDownload}>
+                  Descargar documento
+                </button>
+                <span className="text-muted small">
+                  (Se valida el archivo antes de servirlo)
+                </span>
+              </div>
+            ) : (
+              <p className="text-muted"><em>Sin documento adjunto</em></p>
             )}
           </div>
           <div className="modal-footer">

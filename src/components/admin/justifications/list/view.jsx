@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Detail from "../detail";
 import Update from "../update";
 import { statusMap, typeMap } from "src/constants";
+import exportJustificationsExcelService from "src/services/admin/justification/exportJustificationsExcelService";
 
 const getEstadoClass = (estado) => {
   switch (estado) {
@@ -64,9 +65,7 @@ const View = ({
     }
 
     // ✅ Filtro por fecha local
-    const from = filters.createdAtStart
-      ? new Date(filters.createdAtStart)
-      : null;
+    const from = filters.createdAtStart ? new Date(filters.createdAtStart) : null;
     const to = filters.createdAtEnd ? new Date(filters.createdAtEnd) : null;
 
     if (from || to) {
@@ -102,6 +101,28 @@ const View = ({
 
   const pageItems = buildPagination(page, totalPages, 1);
 
+  // 🔽 Exportar Excel con filtros actuales
+  const onExportExcel = async () => {
+    const titulo = `justificaciones_${(filters.createdAtStart || "").replaceAll("-", "")}_${(filters.createdAtEnd || "").replaceAll("-", "")}`.toLowerCase();
+    try {
+      await exportJustificationsExcelService(
+        {
+          // Envía sólo lo que tu backend entiende (lo demás lo ignora sin romper)
+          type: filters.type || undefined,
+          status: filters.status || undefined,
+          createdAtStart: filters.createdAtStart || undefined,
+          createdAtEnd: filters.createdAtEnd || undefined,
+          search: filters.search || undefined,
+          // Si algún día decides soportar revisionType en backend, ya lo tienes aquí:
+          revisionType: filters.revisionType || undefined,
+        },
+        titulo || "justificaciones"
+      );
+    } catch (e) {
+      alert(e?.message || "No se pudo exportar el Excel");
+    }
+  };
+
   return (
     <div className="container-fluid p-4">
       <div className="row justify-content-center">
@@ -109,6 +130,14 @@ const View = ({
           <div className="card shadow-sm">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Justificaciones (Administrador)</h5>
+              {/* Botón Exportar en el header */}
+              <button
+                className="btn btn-outline-secondary btn-sm rounded-pill"
+                onClick={onExportExcel}
+                title="Exportar Excel con los filtros actuales"
+              >
+                Exportar Excel
+              </button>
             </div>
 
             <div className="card-body">
@@ -124,9 +153,7 @@ const View = ({
                     placeholder="Buscar por nombre"
                     className="form-control"
                     value={filters.search}
-                    onChange={(e) =>
-                      handleInputChange("search", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange("search", e.target.value)}
                   />
                 </div>
                 <div className="col-md-3">
@@ -175,9 +202,7 @@ const View = ({
               {/* 🔹 Selector por página */}
               <div className="d-flex justify-content-end mb-3">
                 <div className="d-inline-flex align-items-center gap-2 bg-light border rounded-pill px-3 py-1 shadow-sm">
-                  <span className="text-muted small fw-semibold">
-                    Por página:
-                  </span>
+                  <span className="text-muted small fw-semibold">Por página:</span>
                   <select
                     className="form-select form-select-sm border-0 bg-transparent fw-semibold"
                     style={{ width: "70px", boxShadow: "none" }}
@@ -262,20 +287,14 @@ const View = ({
                       <button
                         key={`p-${item}`}
                         className={`btn btn-sm rounded-pill ${
-                          item === page
-                            ? "btn-primary text-white"
-                            : "btn-outline-primary"
+                          item === page ? "btn-primary text-white" : "btn-outline-primary"
                         }`}
                         onClick={() => setPage(item)}
                       >
                         {item}
                       </button>
                     ) : (
-                      <span
-                        key={`e-${idx}`}
-                        className="px-2 text-muted"
-                        aria-hidden="true"
-                      >
+                      <span key={`e-${idx}`} className="px-2 text-muted" aria-hidden="true">
                         …
                       </span>
                     )
