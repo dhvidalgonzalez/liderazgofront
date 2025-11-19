@@ -7,9 +7,8 @@ import {
   getEmployeeProfileService,
   createEmployeeProfileService,
   updateEmployeeProfileService,
-  // upsertEmployeeProfileByRutService, // opcional
+  // upsertEmployeeProfileByRutService, // opcional, por si luego quieres usar el upsert del backend
 } from "src/services/admin/employeeProfile";
-
 
 const toDateInputFormat = (value) => {
   if (!value) return "";
@@ -17,7 +16,6 @@ const toDateInputFormat = (value) => {
   if (isNaN(d.getTime())) return "";
   return d.toISOString().split("T")[0];
 };
-
 
 const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
   if (!open) return null;
@@ -37,6 +35,7 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
   });
 
   const todayISO = () => new Date().toISOString().split("T")[0];
+
   const withDefaultDates = (values) => {
     const startDate = values.startDate || todayISO();
     const endDate = values.endDate || "2099-12-31";
@@ -58,7 +57,10 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
       try {
         setChecking(true);
         setCheckError(null);
+
+        // 👇 asumimos que este servicio devuelve { exists, profile }
         const { exists, profile } = await getEmployeeProfileService(rutNormFromInit);
+
         if (!active) return;
         setExists(!!exists);
         setExistingId(profile?.id || null);
@@ -110,7 +112,6 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
                 endDate: toDateInputFormat(initialData?.endDate),
                 isActive: initialData?.isActive ?? true,
               }}
-
               validationSchema={validationSchema}
               enableReinitialize
               onSubmit={async (rawValues, { setSubmitting, setStatus }) => {
@@ -131,6 +132,7 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
                     await createEmployeeProfileService(values);
                     setStatus({ type: "success", msg: "Perfil creado correctamente." });
                   } else {
+                    // 👉 Modo "nuevo": se INCORPORA automáticamente
                     await createEmployeeProfileService(values);
                     setStatus({ type: "success", msg: "Perfil creado correctamente." });
                   }
@@ -147,183 +149,220 @@ const EmployeeProfileModal = ({ open, onClose, initialData, onSave }) => {
                 }
               }}
             >
-              {({ values, errors, touched, handleChange, handleSubmit, isSubmitting, status }) => (
-                <form onSubmit={handleSubmit}>
-                  <div className="modal-header">
-                    <h5 className="modal-title mb-0">
-                      {isUpdateMode ? "Perfil del Empleado (actualización)" : "Nuevo Perfil"}
-                      <span className="ms-2">
-                        {checking ? (
-                          <span className="badge bg-secondary">Verificando…</span>
-                        ) : exists ? (
-                          <span className="badge bg-info text-dark">Existe</span>
-                        ) : (
-                          <span className="badge bg-success">Nuevo</span>
-                        )}
-                      </span>
-                    </h5>
-                    <button type="button" className="btn-close" onClick={onClose}></button>
-                  </div>
+              {({ values, errors, touched, handleChange, handleSubmit, isSubmitting, status }) => {
+                const isNewMode = !isUpdateMode;
 
-                  <div className="modal-body">
-                    {checkError && (
-                      <div className="alert alert-warning py-2 mb-3">
-                        {checkError} — puedes continuar y guardar igualmente.
-                      </div>
-                    )}
+                const title = isUpdateMode
+                  ? "Perfil del Empleado"
+                  : "Incorporar nuevo perfil";
 
-                    {status && (
-                      <div className={`alert alert-${status.type}`} role="alert">
-                        {status.msg}
-                      </div>
-                    )}
+                const submitLabel = isUpdateMode
+                  ? isSubmitting
+                    ? "Actualizando..."
+                    : "Actualizar"
+                  : isSubmitting
+                  ? "Incorporando..."
+                  : "Incorporar perfil";
 
-                    <div className="row g-3">
-                      {/* === Fila 1 === */}
-                      <div className="col-md-6">
-                        <label className="form-label">Nombre</label>
-                        <input
-                          type="text"
-                          name="name"
-                          value={values.name}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                        {touched.name && errors.name && (
-                          <div className="text-danger small">{errors.name}</div>
-                        )}
-                      </div>
+                return (
+                  <form onSubmit={handleSubmit}>
+                    <div className="modal-header">
+                      <h5 className="modal-title mb-0">
+                        {title}
+                        <span className="ms-2">
+                          {checking ? (
+                            <span className="badge bg-secondary">Verificando…</span>
+                          ) : exists ? (
+                            <span className="badge bg-info text-dark">Perfil existente</span>
+                          ) : (
+                            <span className="badge bg-success">Nuevo perfil</span>
+                          )}
+                        </span>
+                      </h5>
+                      <button type="button" className="btn-close" onClick={onClose}></button>
+                    </div>
 
-                      <div className="col-md-6">
-                        <label className="form-label">RUT</label>
-                        <input
-                          type="text"
-                          name="rut"
-                          value={values.rut}
-                          readOnly
-                          className="form-control"
-                        />
-                      </div>
+                    <div className="modal-body">
+                      {checkError && (
+                        <div className="alert alert-warning py-2 mb-3">
+                          {checkError} — puedes continuar y guardar igualmente.
+                        </div>
+                      )}
 
-                      {/* === Fila 2 === */}
-                      <div className="col-md-6">
-                        <label className="form-label">Email (opcional)</label>
-                        <input
-                          type="email"
-                          name="email"
-                          value={values.email}
-                          onChange={handleChange}
-                          className="form-control"
-                          placeholder="correo@empresa.cl"
-                        />
-                        {touched.email && errors.email && (
-                          <div className="text-danger small">{errors.email}</div>
-                        )}
-                      </div>
+                      {/* 💡 Mensaje claro cuando NO existe el perfil */}
+                      {!checking && !exists && !checkError && (
+                        <div className="alert alert-info py-2 mb-3">
+                          Este colaborador aún no tiene un perfil registrado.  
+                          Si confirmas los datos y presionas{" "}
+                          <strong>“Incorporar perfil”</strong>, se creará automáticamente.
+                        </div>
+                      )}
 
-                      <div className="col-md-6">
-                        <label className="form-label">Código SAP</label>
-                        <input
-                          type="text"
-                          name="sapCode"
-                          value={values.sapCode}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                      </div>
+                      {status && (
+                        <div className={`alert alert-${status.type}`} role="alert">
+                          {status.msg}
+                        </div>
+                      )}
 
-                      {/* === Fila 3 === */}
-                      <div className="col-md-6">
-                        <label className="form-label">Gerencia</label>
-                        <input
-                          type="text"
-                          name="gerencia"
-                          value={values.gerencia}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                      </div>
-
-                      <div className="col-md-6">
-                        <label className="form-label">Empresa</label>
-                        <input
-                          type="text"
-                          name="empresa"
-                          value={values.empresa}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                      </div>
-
-                      {/* === Fila 4 === */}
-                      <div className="col-md-6">
-                        <label className="form-label">Cargo</label>
-                        <input
-                          type="text"
-                          name="position"
-                          value={values.position}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                      </div>
-
-                      <div className="col-md-3">
-                        <label className="form-label">Fecha de Inicio</label>
-                        <input
-                          type="date"
-                          name="startDate"
-                          value={values.startDate || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                        {touched.startDate && errors.startDate && (
-                          <div className="text-danger small">{errors.startDate}</div>
-                        )}
-                      </div>
-
-                      <div className="col-md-3">
-                        <label className="form-label">Fecha de Término</label>
-                        <input
-                          type="date"
-                          name="endDate"
-                          value={values.endDate || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                        />
-                        {touched.endDate && errors.endDate && (
-                          <div className="text-danger small">{errors.endDate}</div>
-                        )}
-                      </div>
-
-                      {/* === Fila 5 === */}
-                      <div className="col-md-3 d-flex align-items-center">
-                        <div className="form-check mt-4">
+                      <div className="row g-3">
+                        {/* === Fila 1 === */}
+                        <div className="col-md-6">
+                          <label className="form-label">Nombre</label>
                           <input
-                            type="checkbox"
-                            name="isActive"
-                            id="isActive"
-                            checked={!!values.isActive}
+                            type="text"
+                            name="name"
+                            value={values.name}
                             onChange={handleChange}
-                            className="form-check-input"
+                            className="form-control"
                           />
-                          <label htmlFor="isActive" className="form-check-label user-select-none">
-                            Activo
-                          </label>
+                          {touched.name && errors.name && (
+                            <div className="text-danger small">{errors.name}</div>
+                          )}
+                        </div>
+
+                        <div className="col-md-6">
+                          <label className="form-label">RUT</label>
+                          <input
+                            type="text"
+                            name="rut"
+                            value={values.rut}
+                            readOnly
+                            className="form-control"
+                          />
+                        </div>
+
+                        {/* === Fila 2 === */}
+                        <div className="col-md-6">
+                          <label className="form-label">Email (opcional)</label>
+                          <input
+                            type="email"
+                            name="email"
+                            value={values.email}
+                            onChange={handleChange}
+                            className="form-control"
+                            placeholder="correo@empresa.cl"
+                          />
+                          {touched.email && errors.email && (
+                            <div className="text-danger small">{errors.email}</div>
+                          )}
+                        </div>
+
+                        <div className="col-md-6">
+                          <label className="form-label">Código SAP</label>
+                          <input
+                            type="text"
+                            name="sapCode"
+                            value={values.sapCode}
+                            onChange={handleChange}
+                            className="form-control"
+                          />
+                        </div>
+
+                        {/* === Fila 3 === */}
+                        <div className="col-md-6">
+                          <label className="form-label">Gerencia</label>
+                          <input
+                            type="text"
+                            name="gerencia"
+                            value={values.gerencia}
+                            onChange={handleChange}
+                            className="form-control"
+                          />
+                        </div>
+
+                        <div className="col-md-6">
+                          <label className="form-label">Empresa</label>
+                          <input
+                            type="text"
+                            name="empresa"
+                            value={values.empresa}
+                            onChange={handleChange}
+                            className="form-control"
+                          />
+                        </div>
+
+                        {/* === Fila 4 === */}
+                        <div className="col-md-6">
+                          <label className="form-label">Cargo</label>
+                          <input
+                            type="text"
+                            name="position"
+                            value={values.position}
+                            onChange={handleChange}
+                            className="form-control"
+                          />
+                        </div>
+
+                        <div className="col-md-3">
+                          <label className="form-label">Fecha de Inicio</label>
+                          <input
+                            type="date"
+                            name="startDate"
+                            value={values.startDate || ""}
+                            onChange={handleChange}
+                            className="form-control"
+                          />
+                          {touched.startDate && errors.startDate && (
+                            <div className="text-danger small">{errors.startDate}</div>
+                          )}
+                        </div>
+
+                        <div className="col-md-3">
+                          <label className="form-label">Fecha de Término</label>
+                          <input
+                            type="date"
+                            name="endDate"
+                            value={values.endDate || ""}
+                            onChange={handleChange}
+                            className="form-control"
+                          />
+                          {touched.endDate && errors.endDate && (
+                            <div className="text-danger small">{errors.endDate}</div>
+                          )}
+                        </div>
+
+                        {/* === Fila 5 === */}
+                        <div className="col-md-3 d-flex align-items-center">
+                          <div className="form-check mt-4">
+                            <input
+                              type="checkbox"
+                              name="isActive"
+                              id="isActive"
+                              checked={!!values.isActive}
+                              onChange={handleChange}
+                              className="form-check-input"
+                            />
+                            <label
+                              htmlFor="isActive"
+                              className="form-check-label user-select-none"
+                            >
+                              Activo
+                            </label>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={onClose}>
-                      Cerrar
-                    </button>
-                    <button type="submit" className="btn btn-success px-4" disabled={isSubmitting}>
-                      {isSubmitting ? "Guardando..." : "Guardar"}
-                    </button>
-                  </div>
-                </form>
-              )}
+                    <div className="modal-footer">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={onClose}
+                        disabled={isSubmitting}
+                      >
+                        Cerrar
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-success px-4"
+                        disabled={isSubmitting}
+                      >
+                        {submitLabel}
+                      </button>
+                    </div>
+                  </form>
+                );
+              }}
             </Formik>
           </div>
         </div>

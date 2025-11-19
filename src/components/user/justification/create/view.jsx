@@ -16,7 +16,7 @@ import { useUser } from "src/components/context/UserContext";
 import JustificationModal from "./JustificationModal";
 import EmployeeProfileModal from "./EmployeeProfileModal";
 
-// ==================== FORMATEO RUT ====================
+/* ==================== HELPERS ==================== */
 const formatRut = (rut) => {
   if (!rut) return "";
   const cleanRut = rut.replace(/[^0-9kK]/g, "").toUpperCase();
@@ -36,27 +36,40 @@ const formatRut = (rut) => {
   return `${formatted}-${dv}`;
 };
 
-// ==================== COMPONENTE PRINCIPAL ====================
+const normalizeOptionalString = (v) => {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+};
+
+const normalizeSapCode = (v) => {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+};
+
+/* Estado inicial del formulario (centralizado para poder resetear) */
+const INITIAL_FORM = {
+  userId: "",
+  employeeNombre: "",
+  employeeRut: "",
+  employeeEmail: "",
+  employeeSapCode: "",
+  employeeGerencia: "",
+  employeeEmpresa: "",
+  type: "",
+  startDate: "",
+  endDate: "",
+  description: "",
+};
+
+/* ==================== COMPONENTE ==================== */
 const View = () => {
   const { user } = useUser();
   const queryClient = useQueryClient();
 
-  // Estados generales
-  const [formData, setFormData] = useState({
-    userId: "",
-    employeeNombre: "",
-    employeeRut: "",
-    employeeEmail: "",
-    employeeSapCode: "",
-    employeeGerencia: "",
-    employeeEmpresa: "",
-    type: "",
-    startDate: "",
-    endDate: "",
-    description: "",
-  });
-
-  // ❗ Errores de campos requeridos para resaltar inputs
+  // Form + errores
+  const [formData, setFormData] = useState(INITIAL_FORM);
   const [fieldErrors, setFieldErrors] = useState({
     userId: false,
     type: false,
@@ -64,16 +77,19 @@ const View = () => {
     endDate: false,
   });
 
+  // UI / modales / alertas
   const [modal, setModal] = useState({ open: false, error: "", data: null });
   const [alert, setAlert] = useState({ type: "", message: "" });
   const [attachedFile, setAttachedFile] = useState(null);
+  const [fileInputKey, setFileInputKey] = useState(0); // para limpiar <input type="file" />
+
   const [profileModal, setProfileModal] = useState({
     open: false,
     data: null,
     isNew: false,
   });
 
-  // Filtros
+  // Filtros / búsqueda
   const [gerenciaFilter, setGerenciaFilter] = useState("");
   const [empresaFilter, setEmpresaFilter] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -81,7 +97,31 @@ const View = () => {
   const [debouncedUserSearch] = useDebounce(userSearch, 400);
   const [debouncedRutSearch] = useDebounce(rutSearch, 400);
 
-  // ==================== MUTACIÓN JUSTIFICACIÓN ====================
+  /* ============ Helpers de normalización para el payload final ============ */
+  const buildNormalizedPayload = (raw) => {
+    return {
+      ...raw,
+      // asegurar que estos snapshots sean string|null
+      employeeEmail: normalizeOptionalString(raw.employeeEmail),
+      employeeGerencia: normalizeOptionalString(raw.employeeGerencia),
+      employeeEmpresa: normalizeOptionalString(raw.employeeEmpresa),
+      employeePosition: normalizeOptionalString(raw.employeePosition),
+      employeeSapCode: normalizeSapCode(raw.employeeSapCode),
+    };
+  };
+
+  /* ============ Reset total del formulario tras crear con éxito ============ */
+  const resetAll = () => {
+    setFormData(INITIAL_FORM);
+    setFieldErrors({ userId: false, type: false, startDate: false, endDate: false });
+    setAttachedFile(null);
+    setFileInputKey((k) => k + 1); // limpia input file
+    setModal({ open: false, error: "", data: null });
+    // NO cierro el profileModal aquí porque no está abierto en este flujo
+    // Mantengo filtros/búsquedas tal cual (si quisieras también se pueden limpiar)
+  };
+
+  /* ==================== MUTACIÓN JUSTIFICACIÓN ==================== */
   const mutation = useMutation({
     mutationFn: createJustificationService,
     onSuccess: () => {
@@ -90,13 +130,14 @@ const View = () => {
         type: "success",
         message: "Justificación ingresada correctamente.",
       });
+      resetAll(); // ← limpiar todo al terminar OK
     },
     onError: (err) => {
-      setAlert({ type: "danger", message: err.message || "Error al guardar." });
+      setAlert({ type: "danger", message: err?.message || "Error al guardar." });
     },
   });
 
-  // ==================== QUERIES ====================
+  /* ==================== QUERIES ==================== */
   const { data: gerencias = [] } = useQuery({
     queryKey: ["gerencias"],
     queryFn: listGerenciasService,
@@ -129,11 +170,10 @@ const View = () => {
     keepPreviousData: true,
   });
 
-  // ==================== FUNCIONES ====================
+  /* ==================== HANDLERS ==================== */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // si el usuario corrige el campo, limpiamos su error visual
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: false }));
     }
@@ -141,15 +181,20 @@ const View = () => {
 
   const handleModalSubmit = () => {
     if (!modal.data) return;
-    mutation.mutate({ ...modal.data, file: attachedFile });
+    const payload = buildNormalizedPayload(modal.data);
+    mutation.mutate({ ...payload, file: attachedFile });
+    // cerramos modal (el reset total se hace en onSuccess)
     setModal({ open: false, error: "", data: null });
-    setAttachedFile(null);
   };
 
   // ✅ Selección de trabajador y carga de perfil
   const handleWorkerSelect = async (rut) => {
     const selected = trabajadores.find((t) => t.RutCorregido?.toString() === rut);
-    if (!selected) return;
+    if (!selected) {
+      // si el usuario deselecciona
+      setFormData((prev) => ({ ...INITIAL_FORM }));
+      return;
+    }
 
     // Actualiza campos del formulario principal
     setFormData((prev) => ({
@@ -158,11 +203,10 @@ const View = () => {
       employeeNombre: selected.Nombre || "",
       employeeRut: selected.Rut || "",
       employeeEmail: selected.Email || "",
-      employeeSapCode: selected.Sap || "",
+      employeeSapCode: selected.Sap != null ? String(selected.Sap) : "", // 👈 string siempre
       employeeGerencia: selected.Gerencia || "",
       employeeEmpresa: selected.Empresa || "",
     }));
-    // limpiar error visual del selector si estaba marcado
     if (fieldErrors.userId) {
       setFieldErrors((prev) => ({ ...prev, userId: false }));
     }
@@ -180,7 +224,7 @@ const View = () => {
         rut: selected.Rut,
         name: selected.Nombre,
         email: selected.Email || "",
-        sapCode: selected.Sap || "",
+        sapCode: selected.Sap != null ? String(selected.Sap) : "", // 👈 string
         gerencia: selected.Gerencia || "",
         empresa: selected.Empresa || "",
         position: "",
@@ -211,7 +255,7 @@ const View = () => {
           rut: selected.Rut,
           name: selected.Nombre,
           email: selected.Email || "",
-          sapCode: selected.Sap || "",
+          sapCode: selected.Sap != null ? String(selected.Sap) : "",
           gerencia: selected.Gerencia || "",
           empresa: selected.Empresa || "",
           position: "",
@@ -264,7 +308,7 @@ const View = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Validación de requeridos (incluye type)
+    // Validación de requeridos
     const requiredFields = ["userId", "type", "startDate", "endDate"];
     const errors = {};
     requiredFields.forEach((field) => {
@@ -296,14 +340,19 @@ const View = () => {
       return;
     }
 
+    const payload = buildNormalizedPayload({
+      ...formData,
+      creatorId: user.id,
+    });
+
     setModal({
       open: true,
       error: "",
-      data: { ...formData, file: attachedFile, creatorId: user.id },
+      data: payload,
     });
   };
 
-  // ==================== RENDER ====================
+  /* ==================== RENDER ==================== */
   const start = formData.startDate ? new Date(formData.startDate) : null;
   const end = formData.endDate ? new Date(formData.endDate) : null;
 
@@ -560,6 +609,7 @@ const View = () => {
                 <div className="mb-3">
                   <label className="form-label">Archivo adjunto (opcional)</label>
                   <input
+                    key={fileInputKey} // 👈 fuerza reset del input file
                     type="file"
                     className="form-control"
                     onChange={(e) => setAttachedFile(e.target.files[0])}
@@ -567,8 +617,12 @@ const View = () => {
                 </div>
 
                 <div className="text-center">
-                  <button type="submit" className="btn btn-primary px-5">
-                    Enviar solicitud
+                  <button
+                    type="submit"
+                    className="btn btn-primary px-5"
+                    disabled={mutation.isPending}
+                  >
+                    {mutation.isPending ? "Enviando..." : "Enviar solicitud"}
                   </button>
                 </div>
               </div>
@@ -582,6 +636,7 @@ const View = () => {
               error={modal.error}
               onClose={() => setModal({ open: false, error: "", data: null })}
               onSubmit={handleModalSubmit}
+              submitting={mutation.isPending}
             />
           )}
 

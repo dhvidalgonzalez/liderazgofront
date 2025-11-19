@@ -33,55 +33,64 @@ const ChangePassword = () => {
   // ============================================================
   // 🚀 Enviar solicitud de recuperación
   // ============================================================
-  const handleSubmit = async (e) => {
-    console.log("🚀 ~ handleSubmit ~ e:", e)
-    e.preventDefault();
-    setOkMsg("");
-    setErrMsg("");
-    setLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setOkMsg("");
+  setErrMsg("");
+  setLoading(true);
 
-    try {
-      const res = await requestPasswordCodeService({ rut });
-      console.log("🚀 ~ handleSubmit ~ res:", res)
-      const data = res?.data ?? res ?? {};
+  try {
+    const data = await requestPasswordCodeService({ rut });
+    console.log("🚀 ~ handleSubmit ~ data:", data)
 
-      // ✅ Si el backend responde con éxito
-      if (data.success) {
+    if (data?.success) {
+      // Éxito “nuevo” o “ya existía”
+      if (data.codeAlreadySent) {
+        // Mensaje claro y amigable
+        const v = data.vigencia ? ` hasta ${data.vigencia}` : "";
+        setOkMsg(`Ya existe un código vigente${v}. Revisa tu correo (y SPAM).`);
+      } else {
+        // Mensaje normal de envío
         const detalle = data.detalle?.includes("Código generado")
           ? data.detalle
           : "Correo enviado con éxito. Revisa tu bandeja de entrada.";
         setOkMsg(detalle);
-      } else {
-        // ⚠️ Si el backend indica error, mostramos mensaje específico
-        let msg = data.detalle || data.mensaje;
-
-        if (!msg && data.vigencia)
-          msg = `Ya existe un código vigente hasta ${data.vigencia}.`;
-
-        if (!msg) msg = "No se pudo solicitar el código de recuperación.";
-
-        // Muestra errores conocidos más amigables
-        if (/ya existe/i.test(msg))
-          msg = "Ya existe un código vigente. Intenta más tarde.";
-        else if (/correo/i.test(msg))
-          msg = "No se encontró un correo registrado para este usuario.";
-        else if (/no se generó/i.test(msg))
-          msg = "El sistema no pudo generar un código. Intenta más tarde.";
-
-        setErrMsg(msg);
       }
-    } catch (err) {
-      console.log("🚀 ~ handleSubmit ~ err:", err)
-      const data = err?.response?.data || {};
-      const detalle =
-        data?.detalle ||
-        data?.mensaje ||
-        "No se pudo contactar con el servidor. Verifica tu conexión.";
-      setErrMsg(detalle);
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+
+    // Si llega como “no success”
+    let msg = data?.detalle || data?.mensaje;
+   
+    if (!msg && data?.vigencia) msg = `Ya existe un código vigente hasta ${data.vigencia}.`;
+    if (!msg) msg = "No se pudo solicitar el código de recuperación.";
+
+    if (/ya existe/i.test(msg)) {
+      // Por si algún backend legacy siguiera devolviendo error textual
+      setOkMsg(
+        data?.vigencia
+          ? `Ya existe un código vigente hasta ${data.vigencia}.`
+          : "Ya existe un código vigente."
+      );
+    } else if (/correo/i.test(msg)) {
+      setErrMsg("No se encontró un correo registrado para este usuario.");
+    } else if (/no se generó/i.test(msg)) {
+      setErrMsg("El sistema no pudo generar un código. Intenta más tarde.");
+    } else {
+      setErrMsg(msg);
+    }
+  } catch (err) {
+    const data = err?.response?.data || {};
+    const detalle =
+      data?.detalle ||
+      data?.mensaje ||
+      "No se pudo contactar con el servidor. Verifica tu conexión.";
+    setErrMsg(detalle);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ============================================================
   // 🖼️ Render
