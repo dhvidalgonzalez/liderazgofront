@@ -8,7 +8,7 @@ export const DataContextProvider = ({ children }) => {
   // 🔹 Filtros activos en el formulario
   const [filters, setFilters] = useState({
     search: "",
-    revisionType: "",       // "" | "manual" | "automatica" (filtro solo local)
+    revisionType: "", // "" | "manual" | "automatica" (filtro solo local)
     createdAtStart: "",
     createdAtEnd: "",
   });
@@ -26,37 +26,95 @@ export const DataContextProvider = ({ children }) => {
     };
   });
 
-  // 🔹 Query de justificaciones (admin)
+  // 🔹 Paginación de servidor
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const justificationQuery = useQuery({
-    queryKey: ["admin-justifications", appliedFilters],
+    queryKey: ["admin-justifications", appliedFilters, page, pageSize],
     queryFn: async () => {
-      const res = await listJustificationsService(appliedFilters);
-      return Array.isArray(res) ? res : res?.data || [];
+      const result = await listJustificationsService({
+        ...appliedFilters,
+        page,
+        pageSize,
+      });
+
+      // Normalizamos la forma { data, pagination }
+      if (Array.isArray(result)) {
+        return {
+          data: result,
+          pagination: {
+            page,
+            pageSize,
+            totalItems: result.length,
+            totalPages: 1,
+            hasNext: false,
+            hasPrev: false,
+          },
+        };
+      }
+
+      return {
+        data: result?.data || [],
+        pagination:
+          result?.pagination || {
+            page,
+            pageSize,
+            totalItems: (result?.data || []).length,
+            totalPages: 1,
+            hasNext: false,
+            hasPrev: false,
+          },
+      };
     },
-    keepPreviousData: false,
+    keepPreviousData: true,
     refetchOnWindowFocus: false,
   });
 
-  // 🔹 Aplica filtros (dispara el refetch)
-  const applyFilters = () => setAppliedFilters({ ...filters });
+  // 🔹 Aplica filtros (dispara el refetch y resetea la página)
+  const applyFilters = () => {
+    setPage(1);
+    setAppliedFilters({ ...filters });
+  };
 
-  const value = useMemo(
-    () => ({
+  const value = useMemo(() => {
+    const payload = justificationQuery.data || {
+      data: [],
+      pagination: {
+        page,
+        pageSize,
+        totalItems: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      },
+    };
+
+    return {
       isLoading: justificationQuery.isLoading,
       isError: justificationQuery.isError,
-      justifications: justificationQuery.data || [],
+      justifications: payload.data || [],
+      pagination: payload.pagination,
+      totalItems: payload.pagination?.totalItems ?? (payload.data || []).length,
+      page,
+      setPage,
+      pageSize,
+      setPageSize,
       filters,
+      appliedFilters,
       setFilters,
       applyFilters,
       refetch: justificationQuery.refetch,
-    }),
-    [
-      justificationQuery.isLoading,
-      justificationQuery.isError,
-      justificationQuery.data,
-      filters,
-    ]
-  );
+    };
+  }, [
+    justificationQuery.isLoading,
+    justificationQuery.isError,
+    justificationQuery.data,
+    filters,
+    appliedFilters,
+    page,
+    pageSize,
+  ]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };

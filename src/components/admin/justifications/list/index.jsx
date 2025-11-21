@@ -8,8 +8,15 @@ const List = () => {
     isLoading,
     isError,
     filters,
+    appliedFilters,
     setFilters,
-    applyFilters, // ✅ usamos applyFilters
+    applyFilters,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    pagination,
+    totalItems,
   } = useDataContext();
 
   if (isLoading) {
@@ -24,8 +31,15 @@ const List = () => {
     <View
       justifications={justifications}
       filters={filters}
+      appliedFilters={appliedFilters}
       setFilters={setFilters}
       applyFilters={applyFilters}
+      page={page}
+      setPage={setPage}
+      pageSize={pageSize}
+      setPageSize={setPageSize}
+      pagination={pagination}
+      totalItems={totalItems}
     />
   );
 };

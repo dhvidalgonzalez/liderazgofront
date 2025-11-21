@@ -20,13 +20,21 @@ const getEstadoClass = (estado) => {
 const View = ({
   justifications,
   filters,
+  appliedFilters,
   setFilters,
   applyFilters,
+  page,
+  setPage,
+  pageSize,
+  setPageSize,
+  pagination,
+  totalItems,
 }) => {
   const [selected, setSelected] = useState(null);
   const [updateTarget, setUpdateTarget] = useState(null);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+
+  const totalPages = Math.max(1, pagination?.totalPages || 1);
+  const currentPage = pagination?.page || page || 1;
 
   // ✅ Inicializa rango de fechas (último mes)
   useEffect(() => {
@@ -44,19 +52,12 @@ const View = ({
 
   const handleInputChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    setPage(1);
+    // la página de servidor se resetea al aplicar filtros (applyFilters)
   };
 
-  // ✅ Filtro local (nombre y revisión)
-  const locallyFiltered = useMemo(() => {
-    let data = [...justifications];
-    const q = (filters.search || "").toLowerCase().trim();
-
-    if (q) {
-      data = data.filter((j) =>
-        (j.employeeNombre || "").toLowerCase().includes(q)
-      );
-    }
+  // ✅ Filtro local SOLO por tipo de revisión (manual/automática)
+  const currentPageData = useMemo(() => {
+    let data = [...(justifications || [])];
 
     if (filters.revisionType) {
       data = data.filter((j) =>
@@ -64,26 +65,8 @@ const View = ({
       );
     }
 
-    // ✅ Filtro por fecha local
-    const from = filters.createdAtStart ? new Date(filters.createdAtStart) : null;
-    const to = filters.createdAtEnd ? new Date(filters.createdAtEnd) : null;
-
-    if (from || to) {
-      data = data.filter((j) => {
-        const created = new Date(j.createdAt);
-        return (!from || created >= from) && (!to || created <= to);
-      });
-    }
-
     return data;
-  }, [justifications, filters]);
-
-  // ✅ Paginación local
-  const totalPages = Math.max(1, Math.ceil(locallyFiltered.length / pageSize));
-  const currentPageData = useMemo(() => {
-    const ps = pageSize || 10;
-    return locallyFiltered.slice((page - 1) * ps, page * ps);
-  }, [locallyFiltered, page, pageSize]);
+  }, [justifications, filters.revisionType]);
 
   const buildPagination = (current, total, siblings = 1) => {
     if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -99,22 +82,26 @@ const View = ({
     return items.filter((v, i, a) => a.indexOf(v) === i);
   };
 
-  const pageItems = buildPagination(page, totalPages, 1);
+  const pageItems = buildPagination(currentPage, totalPages, 1);
 
-  // 🔽 Exportar Excel con filtros actuales
+  // 🔽 Exportar Excel con los *mismos filtros aplicados en la tabla*
   const onExportExcel = async () => {
-    const titulo = `justificaciones_${(filters.createdAtStart || "").replaceAll("-", "")}_${(filters.createdAtEnd || "").replaceAll("-", "")}`.toLowerCase();
+    const start = appliedFilters.createdAtStart || "";
+    const end = appliedFilters.createdAtEnd || "";
+    const titulo = `justificaciones_${start.replaceAll("-", "")}_${end.replaceAll(
+      "-",
+      ""
+    )}`.toLowerCase();
+
     try {
       await exportJustificationsExcelService(
         {
-          // Envía sólo lo que tu backend entiende (lo demás lo ignora sin romper)
-          type: filters.type || undefined,
-          status: filters.status || undefined,
-          createdAtStart: filters.createdAtStart || undefined,
-          createdAtEnd: filters.createdAtEnd || undefined,
-          search: filters.search || undefined,
-          // Si algún día decides soportar revisionType en backend, ya lo tienes aquí:
-          revisionType: filters.revisionType || undefined,
+          type: appliedFilters.type || undefined,
+          status: appliedFilters.status || undefined,
+          createdAtStart: appliedFilters.createdAtStart || undefined,
+          createdAtEnd: appliedFilters.createdAtEnd || undefined,
+          search: appliedFilters.search || undefined,
+          revisionType: appliedFilters.revisionType || undefined,
         },
         titulo || "justificaciones"
       );
@@ -122,6 +109,9 @@ const View = ({
       alert(e?.message || "No se pudo exportar el Excel");
     }
   };
+
+  const shownCount = currentPageData.length;
+  const totalCount = totalItems ?? shownCount;
 
   return (
     <div className="container-fluid p-4">
@@ -199,8 +189,19 @@ const View = ({
                 </div>
               </div>
 
-              {/* 🔹 Selector por página */}
-              <div className="d-flex justify-content-end mb-3">
+              {/* 🔹 Resumen + Selector por página */}
+              <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <small className="text-muted">
+                  Mostrando <strong>{shownCount}</strong> de{" "}
+                  <strong>{totalCount}</strong> registros
+                  {totalPages > 1 && (
+                    <>
+                      {" "}
+                      (página {currentPage} de {totalPages})
+                    </>
+                  )}
+                </small>
+
                 <div className="d-inline-flex align-items-center gap-2 bg-light border rounded-pill px-3 py-1 shadow-sm">
                   <span className="text-muted small fw-semibold">Por página:</span>
                   <select
@@ -208,7 +209,8 @@ const View = ({
                     style={{ width: "70px", boxShadow: "none" }}
                     value={pageSize}
                     onChange={(e) => {
-                      setPageSize(Number(e.target.value));
+                      const newSize = Number(e.target.value) || 10;
+                      setPageSize(newSize); // 🔁 backend se vuelve a llamar con nuevo pageSize
                       setPage(1);
                     }}
                   >
@@ -270,13 +272,13 @@ const View = ({
                 </div>
               )}
 
-              {/* 🔹 Paginador local */}
+              {/* 🔹 Paginador (de servidor) */}
               {totalPages > 1 && (
                 <div className="mt-4 d-flex justify-content-center align-items-center flex-wrap gap-2">
                   <button
                     className="btn btn-outline-secondary btn-sm rounded-pill"
                     onClick={() => setPage(1)}
-                    disabled={page === 1}
+                    disabled={currentPage === 1}
                     title="Primera página"
                   >
                     ⏮
@@ -287,14 +289,20 @@ const View = ({
                       <button
                         key={`p-${item}`}
                         className={`btn btn-sm rounded-pill ${
-                          item === page ? "btn-primary text-white" : "btn-outline-primary"
+                          item === currentPage
+                            ? "btn-primary text-white"
+                            : "btn-outline-primary"
                         }`}
                         onClick={() => setPage(item)}
                       >
                         {item}
                       </button>
                     ) : (
-                      <span key={`e-${idx}`} className="px-2 text-muted" aria-hidden="true">
+                      <span
+                        key={`e-${idx}`}
+                        className="px-2 text-muted"
+                        aria-hidden="true"
+                      >
                         …
                       </span>
                     )
@@ -303,7 +311,7 @@ const View = ({
                   <button
                     className="btn btn-outline-secondary btn-sm rounded-pill"
                     onClick={() => setPage(totalPages)}
-                    disabled={page === totalPages}
+                    disabled={currentPage === totalPages}
                     title="Última página"
                   >
                     ⏭
