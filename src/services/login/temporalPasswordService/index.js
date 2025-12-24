@@ -14,7 +14,6 @@ const temporalPasswordService = async ({ rut, tempPassword }) => {
       url: "/login/change-password/validate-temp",
       data: { rut: normalizeRut(rut), tempPassword },
     });
-    console.log("🚀 ~ temporalPasswordService ~ res:", res)
     return res;
   } catch (error) {
     console.error("❌ Error en temporalPasswordService:", error);

@@ -121,7 +121,7 @@ const ConfirmChangePassword = ({
       }
     } catch (err) {
       const data = err?.response?.data || {};
-      console.log("🚀 ~ handleSubmit ~ data:", data)
+
       const detalle =
         data?.detalle ||
         data?.mensaje ||

@@ -3,98 +3,110 @@ import { Link } from "react-router-dom";
 import LoginBase from "src/components/base/login";
 import requestPasswordCodeService from "src/services/login/changePasswordService";
 
+// ============================================================
+// 🧩 Helpers RUT (máscara + validación DV)
+// ============================================================
+const cleanRut = (value) => (value || "").replace(/[^0-9kK]/g, "").toUpperCase();
+
+const formatRut = (value) => {
+  const clean = cleanRut(value);
+  if (!clean) return "";
+  let body = clean.slice(0, -1);
+  let dv = clean.slice(-1);
+
+  let formatted = "";
+  while (body.length > 3) {
+    formatted = "." + body.slice(-3) + formatted;
+    body = body.slice(0, -3);
+  }
+  formatted = body + formatted;
+  return `${formatted}-${dv}`;
+};
+
+const rutDv = (body) => {
+  let sum = 0;
+  let mul = 2;
+  for (let i = body.length - 1; i >= 0; i--) {
+    sum += Number(body[i]) * mul;
+    mul = mul === 7 ? 2 : mul + 1;
+  }
+  const mod = 11 - (sum % 11);
+  if (mod === 11) return "0";
+  if (mod === 10) return "K";
+  return String(mod);
+};
+
+const isValidRut = (rutFormatted) => {
+  const c = cleanRut(rutFormatted);
+  if (c.length < 2) return false;
+  const body = c.slice(0, -1);
+  const dv = c.slice(-1);
+  if (!/^\d+$/.test(body)) return false;
+  return rutDv(body) === dv;
+};
+
 const ChangePassword = () => {
   const [rut, setRut] = useState("");
   const [loading, setLoading] = useState(false);
   const [okMsg, setOkMsg] = useState("");
   const [errMsg, setErrMsg] = useState("");
 
-  // ============================================================
-  // 🧩 Máscara automática de RUT
-  // ============================================================
-  const formatRut = (value) => {
-    const clean = value.replace(/[^0-9kK]/g, "").toUpperCase();
-    if (!clean) return "";
-    let body = clean.slice(0, -1);
-    let dv = clean.slice(-1);
-    let formatted = "";
-    while (body.length > 3) {
-      formatted = "." + body.slice(-3) + formatted;
-      body = body.slice(0, -3);
-    }
-    formatted = body + formatted;
-    return `${formatted}-${dv}`;
-  };
+  const handleRutChange = (e) => setRut(formatRut(e.target.value));
 
-  const handleRutChange = (e) => {
-    setRut(formatRut(e.target.value));
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setOkMsg("");
+    setErrMsg("");
 
-  // ============================================================
-  // 🚀 Enviar solicitud de recuperación
-  // ============================================================
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setOkMsg("");
-  setErrMsg("");
-  setLoading(true);
+    const raw = String(rut || "").trim();
 
-  try {
-    const data = await requestPasswordCodeService({ rut });
-    console.log("🚀 ~ handleSubmit ~ data:", data)
-
-    if (data?.success) {
-      // Éxito “nuevo” o “ya existía”
-      if (data.codeAlreadySent) {
-        // Mensaje claro y amigable
-        const v = data.vigencia ? ` hasta ${data.vigencia}` : "";
-        setOkMsg(`Ya existe un código vigente${v}. Revisa tu correo (y SPAM).`);
-      } else {
-        // Mensaje normal de envío
-        const detalle = data.detalle?.includes("Código generado")
-          ? data.detalle
-          : "Correo enviado con éxito. Revisa tu bandeja de entrada.";
-        setOkMsg(detalle);
-      }
+    // ✅ bloquear correos
+    if (raw.includes("@")) {
+      setErrMsg("Este sistema solo acepta RUT (no correo). Ej: 11.111.111-1");
       return;
     }
 
-    // Si llega como “no success”
-    let msg = data?.detalle || data?.mensaje;
-   
-    if (!msg && data?.vigencia) msg = `Ya existe un código vigente hasta ${data.vigencia}.`;
-    if (!msg) msg = "No se pudo solicitar el código de recuperación.";
-
-    if (/ya existe/i.test(msg)) {
-      // Por si algún backend legacy siguiera devolviendo error textual
-      setOkMsg(
-        data?.vigencia
-          ? `Ya existe un código vigente hasta ${data.vigencia}.`
-          : "Ya existe un código vigente."
-      );
-    } else if (/correo/i.test(msg)) {
-      setErrMsg("No se encontró un correo registrado para este usuario.");
-    } else if (/no se generó/i.test(msg)) {
-      setErrMsg("El sistema no pudo generar un código. Intenta más tarde.");
-    } else {
-      setErrMsg(msg);
+    // ✅ validar DV antes de llamar al backend
+    if (!isValidRut(raw)) {
+      setErrMsg("RUT inválido. Revisa el dígito verificador.");
+      return;
     }
-  } catch (err) {
-    const data = err?.response?.data || {};
-    const detalle =
-      data?.detalle ||
-      data?.mensaje ||
-      "No se pudo contactar con el servidor. Verifica tu conexión.";
-    setErrMsg(detalle);
-  } finally {
-    setLoading(false);
-  }
-};
 
+    setLoading(true);
+    try {
+      const data = await requestPasswordCodeService({ rut: raw });
 
-  // ============================================================
-  // 🖼️ Render
-  // ============================================================
+      if (data?.success) {
+        if (data.errorCode === "CODE_ALREADY_SENT" || data.codeAlreadySent) {
+          const v = data.vigencia ? ` hasta ${data.vigencia}` : "";
+          setOkMsg(`Ya existe un código vigente${v}. Revisa tu correo (y SPAM).`);
+        } else {
+          setOkMsg(data.userMessage || "Código enviado. Revisa tu correo (y SPAM).");
+        }
+        return;
+      }
+
+      const code = data?.errorCode || "UNKNOWN_ERROR";
+
+      if (code === "INVALID_IDENTIFIER") {
+        setErrMsg("Este sistema solo acepta RUT. Ej: 11.111.111-1");
+      } else if (code === "RUT_NOT_REGISTERED" || code === "RUT_NOT_FOUND_OR_INACTIVE") {
+        setErrMsg("Ese RUT no está registrado o la cuenta está inactiva.");
+      } else if (code === "NO_EMAIL_ON_FILE") {
+        setErrMsg("No existe un correo vigente asociado a este RUT. Contacta soporte.");
+      } else if (code === "APIUNI_UNAVAILABLE" || code === "CONNECTION_ERROR") {
+        setErrMsg("Servicio temporalmente no disponible. Intenta más tarde.");
+      } else {
+        setErrMsg(
+          data?.userMessage ||
+            "No se pudo solicitar el código de recuperación. Intenta nuevamente."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <LoginBase>
       <h3 className="fw-bold text-primary">Recuperar acceso</h3>
@@ -119,7 +131,12 @@ const handleSubmit = async (e) => {
             onChange={handleRutChange}
             maxLength={12}
             required
+            autoComplete="username"
+            inputMode="text"
           />
+          {rut.trim().length >= 3 && !rut.includes("@") && !isValidRut(rut) && (
+            <small className="text-muted">Revisa el RUT (DV) antes de continuar.</small>
+          )}
         </div>
 
         <button
